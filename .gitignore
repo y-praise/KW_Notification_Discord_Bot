@@ -1,3 +1,10 @@
 /kw-notification-firebase-adminsdk-fbsvc-fbd010254b.json
 /training_data_all.csv
 /단과대, 학과(학부) instagram ID list.txt
+
+.env
+firebase_key.json
+__pycache__/
+*.pyc
+venv/
+.DS_Store
