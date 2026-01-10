@@ -269,66 +269,57 @@ def get_kwai_notices():
         
     return results  #인융대 공지사항 크롤링
 
-def get_kwei_notices():   #전자정보공과대학 공지사항 크롤링
+def get_kwei_notices():   # 전자정보공과대학 공지사항 크롤링
     BASE_URL = "https://ei.kw.ac.kr/community"
     NOTICE_LIST_URL = "https://ei.kw.ac.kr/community/notice.php" 
 
-
-    # 헤더 설정 (브라우저인 척 속이기)
     headers = {'User-Agent': 'Mozilla/5.0'}
     res = requests.get(NOTICE_LIST_URL, headers=headers)
-    res.encoding = 'utf-8' # 한글 깨짐 방지
+    res.encoding = 'utf-8'
     soup = BeautifulSoup(res.text, 'html.parser')
     
-    # 공지사항 리스트 파싱
+    # 1. 목록 찾기 (제목이 있는 표 찾기)
     header = soup.find(lambda tag: tag.name in ['th', 'td'] and "제목" in tag.text)
     if header:
         table = header.find_parent("table")
         articles = table.select("tr")
     else:
-        articles = soup.select(".board-list tr")
+        articles = soup.select(".board_table tr") # board-table이 아니라 board_table(언더바)
         if not articles: articles = soup.select("tbody tr")
 
+    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
     
     results = []
-    target_count = 5 # 수집할 일반 게시글 수
+    target_count = 5 
     
     for article in articles[1:]: 
-        # 목표 개수 채우면 중단
         if len(results) >= target_count:
             break
 
-        #공지글 건너뜀
+        # [필터링] 공지글 패스
         if "notice_tr" in article.get("class", []):
             continue
+            
         no_td = article.select_one("td")
-        if not no_td:
-            continue
+        if not no_td: continue
         no_text = no_td.get_text(strip=True)
-        if not no_text.isdigit():
+        if not no_text.replace(",", "").isdigit():
             continue
-
 
         # [제목 추출]
         title_td = article.select_one(".subject")
         if not title_td: title_td = article.select_one(".title")
         if not title_td: title_td = article.select_one("td.left")
-        
         if not title_td:
             tds = article.select("td")
             if len(tds) > 2: title_td = tds[1]
 
         if not title_td: continue
-
         a_tag = title_td.select_one("a")
         if not a_tag: continue
 
-        # [청소] 제목 안의 잡다한 태그 삭제
-        for junk in a_tag.select("img, span"): 
-            junk.decompose()
-
+        for junk in a_tag.select("img, span"): junk.decompose()
         raw_title = a_tag.get_text(separator=" ", strip=True)
-        # "New" 텍스트 제거
         if "New" in raw_title: raw_title = raw_title.replace("New", "")
         title = " ".join(raw_title.split())
 
@@ -343,32 +334,29 @@ def get_kwei_notices():   #전자정보공과대학 공지사항 크롤링
         else:
             link = relative_link
         
-        # [상세 페이지 접속]
+        # ---------------------------------------------------------------
+        # [상세 페이지 접속 & 정확한 본문 찾기]
+        # ---------------------------------------------------------------
         sub_res = requests.get(link, headers=headers)
         sub_res.encoding = 'utf-8'
         sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
 
-        # 본문 영역 찾기 (여러 후보군)
-        content_box = None
-        # 전자정보대는 .view-con 또는 .board-view 클래스 사용 가능성 높음
-        candidates = [".view-con", ".board-view", ".view_content", ".view_td"]
+        # [핵심] 전자정보대 본문은 무조건 .view_con 클래스 안에 있음
+        content_box = sub_soup.select_one(".view_con")
         
-        for candidate in candidates:
-            content_box = sub_soup.select_one(candidate)
-            if content_box: break
-
-        # 못 찾았으면 글자 수 많은 div 자동 선택
+        # 만약 .view_con을 못 찾으면 2순위 후보 탐색
         if not content_box:
-             divs = sub_soup.select("div")
-             valid_divs = [d for d in divs if len(d.text) > 50]
-             if valid_divs:
-                content_box = max(valid_divs, key=lambda x: len(x.text))
+            content_box = sub_soup.select_one(".board_view_con")
 
         img_urls = []
         content = "본문 내용을 찾을 수 없습니다."
 
         if content_box:
-            # 잡다한 정보 삭제
+            # 1. 본문 내부의 불필요한 태그 삭제 (HWP 데이터 등)
+            for junk in content_box.select("#hwpEditorBoardContent, .hwp_editor_board_content"):
+                junk.decompose()
+
+            # 2. 잡다한 메타 정보 삭제
             trash_tags = [".view-file", ".file", "dt", "dd", ".view-info", "ul.view-info"]
             for selector in trash_tags:
                 for trash in content_box.select(selector):
@@ -378,16 +366,15 @@ def get_kwei_notices():   #전자정보공과대학 공지사항 크롤링
             content = content.replace("\n", " ").replace("\r", "").replace("\t", "")
             content = content.replace("\u200b", "").replace("\xa0", " ")
             
-            # 너무 길면 자르기
             if len(content) > 3000:
                 content = content[:3000] + "...(내용 잘림)"
 
-            # 이미지 추출
+            # [이미지 추출] content_box 안에서만 검색
             img_tags = content_box.select("img")
             for img in img_tags:
                 src = img.get('src')
                 if not src: continue
-                if src.startswith("data:"): continue # Base64 제외
+                if src.startswith("data:"): continue
                 if "icon" in src or "logo" in src or "common" in src: continue
                 
                 if not src.startswith("http"):
@@ -403,18 +390,155 @@ def get_kwei_notices():   #전자정보공과대학 공지사항 크롤링
         crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         data = {
-            "crawled_at": crawled_time, #크롤링한시간
-            "full_text": content, #본문내용
-            "image_url": img_urls,  #이미지 url
-            "link": link,   #링크
+            "crawled_at": crawled_time,
+            "full_text": content,
+            "image_url": img_urls,
+            "link": link,
             "source": "전자정보공과대학",
             "status": "pending",
-            "title": title  #제목
+            "title": title
         }
         results.append(data)
         print(f"[{data['source']}] 수집 성공: {title}")
         
     return results
+
+def get_kwbiz_notices():   # 경영대학 공지사항 크롤링
+    BASE_URL = "https://biz.kw.ac.kr"
+    NOTICE_LIST_URL = "https://biz.kw.ac.kr/community/notice.php" 
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    res = requests.get(NOTICE_LIST_URL, headers=headers)
+    res.encoding = 'utf-8'
+    soup = BeautifulSoup(res.text, 'html.parser')
+    
+    # 1. 목록 파싱 (제목이 있는 표 찾기)
+    header = soup.find(lambda tag: tag.name in ['th', 'td'] and "제목" in tag.text)
+    if header:
+        table = header.find_parent("table")
+        articles = table.select("tr")
+    else:
+        articles = soup.select(".board-list tr")
+        if not articles: articles = soup.select("tbody tr")
+
+    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+    
+    results = []
+    target_count = 5 
+    
+    for article in articles[1:]: 
+        if len(results) >= target_count:
+            break
+
+        # [필터링] 공지글 패스
+        no_td = article.select_one("td")
+        if not no_td: continue
+        no_text = no_td.get_text(strip=True)
+        if "notice_tr" in article.get("class", []) or not no_text.replace(",", "").isdigit():
+            continue
+
+        # [제목 추출]
+        title_td = article.select_one(".subject")
+        if not title_td: title_td = article.select_one(".title")
+        if not title_td: title_td = article.select_one("td.left")
+        
+        if not title_td:
+            tds = article.select("td")
+            if len(tds) > 2: title_td = tds[1]
+
+        if not title_td: continue
+        a_tag = title_td.select_one("a")
+        if not a_tag: continue
+
+        for junk in a_tag.select("img, span"): junk.decompose()
+        raw_title = a_tag.get_text(separator=" ", strip=True)
+        if "New" in raw_title: raw_title = raw_title.replace("New", "")
+        title = " ".join(raw_title.split())
+
+        # [링크 생성]
+        relative_link = a_tag['href']
+        if "http" not in relative_link:
+            clean_link = relative_link.replace("./", "")
+            if clean_link.startswith("/"):
+                link = f"https://biz.kw.ac.kr{clean_link}"
+            else:
+                link = f"{BASE_URL}/community/{clean_link}"
+        else:
+            link = relative_link
+        
+        # ---------------------------------------------------------------
+        # [상세 페이지 접속 & 정확한 본문 찾기]
+        # ---------------------------------------------------------------
+        sub_res = requests.get(link, headers=headers)
+        sub_res.encoding = 'utf-8'
+        sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
+
+        # [핵심 수정] 1. 본문 박스 (.view_con) 찾기 (제공해주신 HTML 기준)
+        content_box = sub_soup.select_one(".view_con")
+        
+        # 없으면 예비 후보군 시도
+        if not content_box:
+            content_box = sub_soup.select_one(".board_view_con")
+        if not content_box:
+            content_box = sub_soup.select_one(".view_content")
+
+        img_urls = []
+        content = "본문 내용을 찾을 수 없습니다."
+
+        if content_box:
+            # [핵심 수정] 2. HWP 에디터 데이터 덩어리 제거 (hwpEditorBoardContent)
+            # 이게 있으면 텍스트가 지저분해집니다.
+            for hwp_junk in content_box.select("#hwpEditorBoardContent, .hwp_editor_board_content"):
+                hwp_junk.decompose()
+
+            # 3. 잡다한 태그 삭제
+            trash_tags = [".view-file", ".file", "dt", "dd", ".view-info", "ul.view-info", ".view_title_box"]
+            for selector in trash_tags:
+                for trash in content_box.select(selector):
+                    trash.decompose()
+            
+            content = content_box.get_text(separator="\n", strip=True)
+            content = content.replace("\n", " ").replace("\r", "").replace("\t", "")
+            content = content.replace("\u200b", "").replace("\xa0", " ")
+            
+            if len(content) > 3000:
+                content = content[:3000] + "...(내용 잘림)"
+
+            # [핵심 수정] 4. 이미지 추출 (content_box 안에서만)
+            img_tags = content_box.select("img")
+            for img in img_tags:
+                src = img.get('src')
+                if not src: continue
+                if src.startswith("data:"): continue
+                if "icon" in src or "logo" in src or "common" in src: continue
+                
+                if not src.startswith("http"):
+                    if src.startswith("../"):
+                         src = src.replace("../", "")
+                         src = f"https://biz.kw.ac.kr/{src}"
+                    elif src.startswith("/"):
+                         src = f"https://biz.kw.ac.kr{src}"
+                    else:
+                         src = f"{BASE_URL}/community/{src}" # /community/data/...
+                img_urls.append(src)
+
+        crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        data = {
+            "crawled_at": crawled_time,
+            "full_text": content,
+            "image_url": img_urls,
+            "link": link,
+            "source": "경영대학", 
+            "status": "pending",
+            "title": title
+        }
+        results.append(data)
+        print(f"[{data['source']}] 수집 성공: {title}")
+        
+    return results
+
+
 
 def save_to_firebase(data_list):     #파이어베이스 저장 함수
     print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
@@ -437,7 +561,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-crawled_data = get_kw_notices()      
+crawled_data = get_kwei_notices()      
 
 if crawled_data:
     save_to_firebase(crawled_data)
