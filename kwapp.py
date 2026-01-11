@@ -3067,6 +3067,153 @@ def get_kwpsy_notices():   # 산업심리학과
         
     return results
 
+def get_kwdnaci_notices():   # 동북아문화산업학부
+    BASE_URL = "https://dnaci.kw.ac.kr"
+    NOTICE_LIST_URL = "https://dnaci.kw.ac.kr/notice/news.php" 
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    res = requests.get(NOTICE_LIST_URL, headers=headers)
+    res.encoding = 'utf-8'
+    soup = BeautifulSoup(res.text, 'html.parser')
+    
+    # 목록 파싱
+    articles = soup.select(".board_list tbody tr")
+    if not articles: articles = soup.select("tr")
+
+    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+    
+    results = []
+    target_count = 5 
+    
+    for article in articles: 
+        if len(results) >= target_count:
+            break
+
+        # [필터링] 공지글 확인
+        no_td = article.select_one("td")
+        if not no_td: continue
+        no_text = no_td.get_text(strip=True)
+        # 공지글(notice_tr) 또는 번호가 숫자가 아닌 경우 패스
+        if "notice_tr" in article.get("class", []) or "공지" in no_text or not no_text.replace(",", "").isdigit():
+            continue
+
+        # [제목 추출]
+        title_td = article.select_one(".subject")
+        if not title_td: title_td = article.select_one(".title")
+        if not title_td: title_td = article.select_one("td.left")
+        if not title_td:
+            tds = article.select("td")
+            if len(tds) > 2: title_td = tds[1]
+
+        if not title_td: continue
+        a_tag = title_td.select_one("a")
+        if not a_tag: continue
+
+        for junk in a_tag.select("img, span"): junk.decompose()
+        raw_title = a_tag.get_text(separator=" ", strip=True)
+        if "New" in raw_title: raw_title = raw_title.replace("New", "")
+        title = " ".join(raw_title.split())
+
+        # [링크 생성]
+        relative_link = a_tag['href']
+        if "http" not in relative_link:
+            clean_link = relative_link.replace("./", "")
+            if clean_link.startswith("/"):
+                link = f"https://dnaci.kw.ac.kr{clean_link}"
+            else:
+                # 동북아대 공지사항은 notice 폴더 안에 있음
+                link = f"{BASE_URL}/notice/{clean_link}"
+        else:
+            link = relative_link
+        
+        # ---------------------------------------------------------------
+        # [상세 페이지 접속 & HTML 정밀 타격]
+        # ---------------------------------------------------------------
+        sub_res = requests.get(link, headers=headers)
+        sub_res.encoding = 'utf-8'
+        sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
+
+        # [1단계] 본문이 담긴 가장 적절한 컨테이너 찾기
+        content_box = sub_soup.select_one(".view_con")
+        if not content_box: 
+            content_box = sub_soup.select_one(".board_view")
+        if not content_box:
+            content_box = sub_soup.select_one("#container") # 최후의 수단
+
+        img_urls = []
+        content = ""
+
+        if content_box:
+            # [2단계] HTML 태그 기준으로 불필요한 요소 제거 (Decompose)
+            trash_selectors = [
+                # 1. 상단 헤더 (제목, 작성자, 날짜 등이 들어있는 박스)
+                ".view_top", ".board_view_top", ".title_area", 
+                ".view_info", ".info", ".writer", ".date",
+                
+                # 2. 첨부파일 영역
+                ".view_file", ".file_area", ".attach", ".board_file",
+                
+                # 3. 하단 버튼 영역
+                ".btn_area", ".btn_wrap", ".view_btn", ".btn_list",
+                
+                # 4. 이전글/다음글 네비게이션
+                ".prev_next", ".page_nav", ".view_go",
+                
+                # 5. 기타 잡동사니
+                "script", "style", "iframe",
+                "#hwpEditorBoardContent", ".hwp_editor_board_content"
+            ]
+            
+            for selector in trash_selectors:
+                for trash in content_box.select(selector):
+                    trash.decompose()
+            
+            # [3단계] 텍스트 추출 및 정리
+            content = content_box.get_text(separator="\n", strip=True)
+            
+            # 제목 중복 제거
+            if title in content:
+                content = content.replace(title, "").strip()
+
+            content = content.replace("\u200b", "").replace("\xa0", " ")
+            
+            if len(content) > 3000:
+                content = content[:3000] + "...(내용 잘림)"
+
+            # [4단계] 이미지 추출
+            img_tags = content_box.select("img")
+            for img in img_tags:
+                src = img.get('src')
+                if not src: continue
+                if src.startswith("data:"): continue
+                
+                if not src.startswith("http"):
+                    if src.startswith("../"):
+                         src = src.replace("../", "")
+                         src = f"https://dnaci.kw.ac.kr/{src}"
+                    elif src.startswith("/"):
+                         src = f"https://dnaci.kw.ac.kr{src}"
+                    else:
+                         src = f"{BASE_URL}/notice/{src}"
+                img_urls.append(src)
+
+        crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        data = {
+            "crawled_at": crawled_time,
+            "full_text": content,
+            "image_url": img_urls,
+            "link": link,
+            "source": "동북아문화산업학부", # 출처 변경
+            "status": "pending",
+            "title": title
+        }
+        results.append(data)
+        print(f"[{data['source']}] 수집 성공: {title}")
+        
+    return results
+
+
 
 
 
@@ -3091,7 +3238,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-crawled_data = get_kwpsy_notices()     
+crawled_data = get_kwdnaci_notices()     
 
 if crawled_data:
     save_to_firebase(crawled_data)
