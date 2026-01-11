@@ -1715,7 +1715,164 @@ def get_kwarchi_notices():   # 건축공학과 공지사항 크롤링
         
     return results
 
+def get_kwchemng_notices():   # 화학공학과 공지사항 크롤링
+    BASE_URL = "https://chemng.kw.ac.kr"
+    NOTICE_LIST_URL = "https://chemng.kw.ac.kr/community/notice.php" 
 
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    res = requests.get(NOTICE_LIST_URL, headers=headers)
+    res.encoding = 'utf-8'
+    soup = BeautifulSoup(res.text, 'html.parser')
+    
+    # 1. 목록 파싱 (제목이 있는 테이블 찾기)
+    header = soup.find(lambda tag: tag.name in ['th', 'td'] and "제목" in tag.text)
+    
+    if header:
+        table = header.find_parent("table")
+        articles = table.select("tr")
+    else:
+        articles = soup.select(".board_list tr")
+        if not articles: articles = soup.select("tbody tr")
+
+    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+    
+    results = []
+    target_count = 5 
+    
+    for article in articles[1:]: 
+        if len(results) >= target_count:
+            break
+
+        # [필터링] 공지글 패스
+        no_td = article.select_one("td")
+        if not no_td: continue
+        no_text = no_td.get_text(strip=True)
+        if "notice_tr" in article.get("class", []) or "공지" in no_text or not no_text.replace(",", "").isdigit():
+            continue
+
+        # [제목 추출]
+        title_td = article.select_one(".subject")
+        if not title_td: title_td = article.select_one(".title")
+        if not title_td: title_td = article.select_one("td.left")
+        if not title_td:
+            tds = article.select("td")
+            if len(tds) > 2: title_td = tds[1]
+
+        if not title_td: continue
+        a_tag = title_td.select_one("a")
+        if not a_tag: continue
+
+        for junk in a_tag.select("img, span"): junk.decompose()
+        raw_title = a_tag.get_text(separator=" ", strip=True)
+        if "New" in raw_title: raw_title = raw_title.replace("New", "")
+        title = " ".join(raw_title.split())
+
+        # [링크 생성]
+        relative_link = a_tag['href']
+        if "http" not in relative_link:
+            clean_link = relative_link.replace("./", "")
+            if clean_link.startswith("/"):
+                link = f"https://chemng.kw.ac.kr{clean_link}"
+            else:
+                link = f"{BASE_URL}/community/{clean_link}"
+        else:
+            link = relative_link
+        
+        # ---------------------------------------------------------------
+        # [상세 페이지 접속 & 강력 본문 탐색]
+        # ---------------------------------------------------------------
+        sub_res = requests.get(link, headers=headers)
+        sub_res.encoding = 'utf-8'
+        sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
+
+        # [1단계] 메뉴바, 헤더, 푸터 등 방해꾼들 삭제 (가장 중요!)
+        global_trash = [
+            "header", "footer", "nav", 
+            "#header", "#footer", ".header", ".footer",
+            ".gnb", ".lnb", ".snb", ".top_menu", 
+            ".btn_list", ".paging_wrap", ".view_go", ".prev_next"
+        ]
+        for selector in global_trash:
+            for tag in sub_soup.select(selector):
+                tag.decompose()
+
+        # [2단계] 본문 영역 찾기 (우선순위: 클래스 -> ID -> 최후의 수단)
+        content_box = None
+        
+        # 화학공학과에서 쓸만한 클래스/ID 후보군
+        candidates = [".view_con", "#view_con", ".board_view", ".view_content", ".view_td", "td.view_content"]
+        
+        for candidate in candidates:
+            content_box = sub_soup.select_one(candidate)
+            if content_box: break
+
+        # [3단계] **자동 탐색 모드** (클래스로 못 찾았을 때 발동)
+        if not content_box:
+             # 페이지에 남은 모든 div와 td를 긁어모읍니다. (메뉴바는 이미 지웠으니 안전)
+             all_blocks = sub_soup.select("div, td")
+             
+             # 글자 수가 50자 이상인 덩어리만 추립니다.
+             valid_blocks = [b for b in all_blocks if len(b.get_text(strip=True)) > 50]
+             
+             if valid_blocks:
+                # 그 중에서 글자 수가 가장 많은 덩어리를 본문으로 찍습니다.
+                content_box = max(valid_blocks, key=lambda x: len(x.get_text(strip=True)))
+                # print("  ⚠️ 경고: 본문 클래스를 못 찾아 '자동 탐색'으로 가장 긴 글을 가져왔습니다.")
+
+        img_urls = []
+        content = "본문 내용을 찾을 수 없습니다."
+
+        if content_box:
+            # HWP 에디터 데이터 제거
+            for hwp_junk in content_box.select("#hwpEditorBoardContent, .hwp_editor_board_content"):
+                hwp_junk.decompose()
+
+            # 잡다한 태그 삭제
+            trash_tags = [".view-file", ".file", "dt", "dd", ".view-info", "ul.view-info", ".view_title_box"]
+            for selector in trash_tags:
+                for trash in content_box.select(selector):
+                    trash.decompose()
+            
+            content = content_box.get_text(separator="\n", strip=True)
+            content = content.replace("\n", " ").replace("\r", "").replace("\t", "")
+            content = content.replace("\u200b", "").replace("\xa0", " ")
+            
+            if len(content) > 3000:
+                content = content[:3000] + "...(내용 잘림)"
+
+            # 이미지 추출
+            img_tags = content_box.select("img")
+            for img in img_tags:
+                src = img.get('src')
+                if not src: continue
+                if src.startswith("data:"): continue
+                if "icon" in src or "logo" in src or "common" in src: continue
+                
+                if not src.startswith("http"):
+                    if src.startswith("../"):
+                         src = src.replace("../", "")
+                         src = f"https://chemng.kw.ac.kr/{src}"
+                    elif src.startswith("/"):
+                         src = f"https://chemng.kw.ac.kr{src}"
+                    else:
+                         src = f"{BASE_URL}/community/{src}"
+                img_urls.append(src)
+
+        crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        data = {
+            "crawled_at": crawled_time,
+            "full_text": content,
+            "image_url": img_urls,
+            "link": link,
+            "source": "화학공학과", 
+            "status": "pending",
+            "title": title
+        }
+        results.append(data)
+        print(f"[{data['source']}] 수집 성공: {title}")
+        
+    return results
 
 
 
@@ -1740,7 +1897,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-crawled_data = get_kwarchi_notices()     
+crawled_data = get_kwchemng_notices()     
 
 if crawled_data:
     save_to_firebase(crawled_data)
