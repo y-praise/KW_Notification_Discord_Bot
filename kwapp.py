@@ -2638,7 +2638,7 @@ def get_kwsports_notices():   # 스포츠융합과학과
         
     return results
 
-def get_kwkorean_notices():   # 국어국문학과 (HTML 구조 기반 정밀 추출)
+def get_kwkorean_notices():   # 국어국문학과
     BASE_URL = "https://korean.kw.ac.kr"
     NOTICE_LIST_URL = "https://korean.kw.ac.kr/community/notice.php" 
 
@@ -2787,6 +2787,144 @@ def get_kwkorean_notices():   # 국어국문학과 (HTML 구조 기반 정밀 �
         
     return results
 
+def get_kwmedia_notices():   # 미디어커뮤니케이션학부
+    BASE_URL = "https://www.kwmedia.info"
+    TARGET_URL = "https://www.kwmedia.info/groups" 
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless") 
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    
+    results = []
+    
+    try:
+        # 1. 목록 페이지 접속
+        print(f"📡 [미디어센터] 목록 페이지 접속: {TARGET_URL}")
+        driver.get(TARGET_URL)
+        
+        # [수정] 대기 시간 대폭 연장 (10초)
+        print("⏳ 게시글 목록 로딩 중 (10초 대기)...")
+        time.sleep(10) 
+        
+        # [수정] 스크롤을 천천히 여러 번 내려서 데이터를 확실하게 로딩
+        print("📜 스크롤 다운 중...")
+        for i in range(1, 4):
+            driver.execute_script(f"window.scrollTo(0, {i * 400});") # 400px씩 부드럽게 내림
+            time.sleep(2)
+
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        
+        # 2. 링크 수집
+        raw_links = soup.select("a")
+        target_links = []
+        seen_links = set()
+
+        for a in raw_links:
+            href = a.get('href', '')
+            if not href or len(href) < 5: continue
+            
+            if not href.startswith("http"):
+                href = f"{BASE_URL}{href}" if href.startswith("/") else f"{BASE_URL}/{href}"
+            
+            # 게시글 링크 패턴 필터링
+            if ("/discussion/" in href or "/post/" in href) and "hashtag" not in href and "member" not in href:
+                if href not in seen_links:
+                    seen_links.add(href)
+                    target_links.append(href)
+
+        print(f"🔍 발견된 게시글: {len(target_links)}개 (최신 5개 수집)")
+        
+        # 3. 상세 페이지 순회
+        for link in target_links[:5]: 
+            print(f"  👉 [접속] {link}")
+            driver.get(link)
+            
+            # 상세 페이지 로딩 시간도 충분히 (7초)
+            time.sleep(7) 
+            
+            sub_soup = BeautifulSoup(driver.page_source, 'html.parser')
+            
+            content_box = sub_soup.select_one("article")
+            if not content_box: content_box = sub_soup.select_one("main")
+            if not content_box: content_box = sub_soup.select_one("body")
+
+            title = "제목 없음"
+            text_content = ""
+            img_urls = []
+
+            if content_box:
+                # 불필요한 태그 삭제
+                for trash in content_box.select("script, style, nav, header, footer, button"):
+                    trash.decompose()
+                
+                # 텍스트를 줄 단위로 분리
+                raw_text = content_box.get_text(separator="\n", strip=True)
+                lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+                
+                # [핵심 수정] 8번째 줄(Index 7)을 제목으로 사용!
+                if len(lines) >= 8:
+                    title = lines[7]  # 8번째 줄 (0부터 시작하므로 인덱스 7)
+                    text_content = "\n".join(lines[8:]) # 9번째 줄부터 본문
+                elif len(lines) > 0:
+                    # 줄이 모자르면 맨 마지막 줄을 제목으로
+                    title = lines[-1]
+                    text_content = ""
+                else:
+                    title = "제목을 찾을 수 없음"
+                    text_content = ""
+                
+                # 본문 정제
+                if "Comments" in text_content:
+                    text_content = text_content.split("Comments")[0].strip()
+                if "Recent Posts" in text_content:
+                    text_content = text_content.split("Recent Posts")[0].strip()
+
+                if len(text_content) > 3000:
+                    text_content = text_content[:3000] + "..."
+
+                # 이미지 추출 (크기 필터링)
+                try:
+                    all_images = driver.find_elements(By.TAG_NAME, "img")
+                    for img in all_images:
+                        src = img.get_attribute("src")
+                        if not src or not src.startswith("http"): continue
+                        if "icon" in src or "avatar" in src: continue
+
+                        width = driver.execute_script("return arguments[0].naturalWidth;", img)
+                        if width and width > 300:
+                            if src not in img_urls:
+                                img_urls.append(src)
+                except:
+                    pass
+
+            crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            data = {
+                "crawled_at": crawled_time,
+                "title": title,
+                "full_text": text_content,
+                "image_url": img_urls[:3], 
+                "link": link,
+                "source": "미디어커뮤니케이션학부",
+                "status": "pending"
+            }
+            results.append(data)
+            print(f"  ✅ 수집 성공: {title}")
+
+    except Exception as e:
+        print(f"⚠️ 크롤링 중 오류 발생: {e}")
+        
+    finally:
+        driver.quit()
+        
+    return results
+
+
+
 
 def save_to_firebase(data_list):     #파이어베이스 저장 함수
     print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
@@ -2809,7 +2947,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-crawled_data = get_kwchss_notices()     
+crawled_data = get_kwmedia_notices()     
 
 if crawled_data:
     save_to_firebase(crawled_data)
