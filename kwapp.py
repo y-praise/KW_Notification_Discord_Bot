@@ -2484,6 +2484,155 @@ def get_kwsports_notices():   # 스포츠융합과학과
         
     return results
 
+def get_kwkorean_notices():   # 국어국문학과 (HTML 구조 기반 정밀 추출)
+    BASE_URL = "https://korean.kw.ac.kr"
+    NOTICE_LIST_URL = "https://korean.kw.ac.kr/community/notice.php" 
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    res = requests.get(NOTICE_LIST_URL, headers=headers)
+    res.encoding = 'utf-8'
+    soup = BeautifulSoup(res.text, 'html.parser')
+    
+    # 목록 파싱
+    articles = soup.select(".board_list tbody tr")
+    if not articles: articles = soup.select("tr")
+
+    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+    
+    results = []
+    target_count = 5 
+    
+    for article in articles: 
+        if len(results) >= target_count:
+            break
+
+        # [필터링] 공지글 확인
+        no_td = article.select_one("td")
+        if not no_td: continue
+        no_text = no_td.get_text(strip=True)
+        if "notice_tr" in article.get("class", []) or "공지" in no_text or not no_text.replace(",", "").isdigit():
+            continue
+
+        # [제목 추출]
+        title_td = article.select_one(".subject")
+        if not title_td: title_td = article.select_one(".title")
+        if not title_td: title_td = article.select_one("td.left")
+        if not title_td:
+            tds = article.select("td")
+            if len(tds) > 2: title_td = tds[1]
+
+        if not title_td: continue
+        a_tag = title_td.select_one("a")
+        if not a_tag: continue
+
+        for junk in a_tag.select("img, span"): junk.decompose()
+        raw_title = a_tag.get_text(separator=" ", strip=True)
+        if "New" in raw_title: raw_title = raw_title.replace("New", "")
+        title = " ".join(raw_title.split())
+
+        # [링크 생성]
+        relative_link = a_tag['href']
+        if "http" not in relative_link:
+            clean_link = relative_link.replace("./", "")
+            if clean_link.startswith("/"):
+                link = f"https://korean.kw.ac.kr{clean_link}"
+            else:
+                link = f"{BASE_URL}/community/{clean_link}"
+        else:
+            link = relative_link
+        
+        # ---------------------------------------------------------------
+        # [상세 페이지 접속 & HTML 정밀 타격]
+        # ---------------------------------------------------------------
+        sub_res = requests.get(link, headers=headers)
+        sub_res.encoding = 'utf-8'
+        sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
+
+        # [1단계] 본문이 담긴 가장 적절한 컨테이너 찾기
+        # 국문과는 .view_con 안에 순수 본문이 들어있는 경우가 많습니다.
+        # 만약 없다면 .board_view(전체 틀)를 찾습니다.
+        content_box = sub_soup.select_one(".view_con")
+        if not content_box: 
+            content_box = sub_soup.select_one(".board_view")
+        if not content_box:
+            content_box = sub_soup.select_one("#container") # 최후의 수단
+
+        img_urls = []
+        content = ""
+
+        if content_box:
+            # [2단계] HTML 태그 기준으로 불필요한 요소 제거 (Decompose)
+            # 본문 내용만 남기고 나머지는 태그째로 삭제합니다.
+            
+            trash_selectors = [
+                # 1. 상단 헤더 (제목, 작성자, 날짜 등이 들어있는 박스)
+                ".view_top", ".board_view_top", ".title_area", 
+                ".view_info", ".info", ".writer", ".date",
+                
+                # 2. 첨부파일 영역 (본문 위에 붙어있는 파일 목록)
+                ".view_file", ".file_area", ".attach", ".board_file",
+                
+                # 3. 하단 버튼 영역 (목록, 수정, 삭제, 글쓰기)
+                ".btn_area", ".btn_wrap", ".view_btn", ".btn_list",
+                
+                # 4. 이전글/다음글 네비게이션
+                ".prev_next", ".page_nav", ".view_go",
+                
+                # 5. 기타 잡동사니
+                "script", "style", "iframe",
+                "#hwpEditorBoardContent", ".hwp_editor_board_content" # HWP 데이터
+            ]
+            
+            for selector in trash_selectors:
+                # content_box 안에 있는 해당 태그들을 모두 찾아서 삭제
+                for trash in content_box.select(selector):
+                    trash.decompose()
+            
+            # [3단계] 텍스트 추출 및 정리
+            content = content_box.get_text(separator="\n", strip=True)
+            
+            # 제목이 본문에 중복되어 남아있다면 제거
+            if title in content:
+                content = content.replace(title, "").strip()
+
+            content = content.replace("\u200b", "").replace("\xa0", " ")
+            
+            if len(content) > 3000:
+                content = content[:3000] + "...(내용 잘림)"
+
+            # [4단계] 이미지 추출
+            img_tags = content_box.select("img")
+            for img in img_tags:
+                src = img.get('src')
+                if not src: continue
+                if src.startswith("data:"): continue
+                
+                if not src.startswith("http"):
+                    if src.startswith("../"):
+                         src = src.replace("../", "")
+                         src = f"https://korean.kw.ac.kr/{src}"
+                    elif src.startswith("/"):
+                         src = f"https://korean.kw.ac.kr{src}"
+                    else:
+                         src = f"{BASE_URL}/community/{src}"
+                img_urls.append(src)
+
+        crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        data = {
+            "crawled_at": crawled_time,
+            "full_text": content,
+            "image_url": img_urls,
+            "link": link,
+            "source": "국어국문학과",
+            "status": "pending",
+            "title": title
+        }
+        results.append(data)
+        print(f"[{data['source']}] 수집 성공: {title}")
+        
+    return results
+
 
 def save_to_firebase(data_list):     #파이어베이스 저장 함수
     print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
@@ -2506,7 +2655,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-crawled_data = get_kwsports_notices()     
+crawled_data = get_kwkorean_notices()     
 
 if crawled_data:
     save_to_firebase(crawled_data)
