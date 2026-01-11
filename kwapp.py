@@ -1556,6 +1556,168 @@ def get_kwsemicon_notices():   # 반도체시스템공학부 공지사항 크롤
         
     return results
 
+def get_kwarchi_notices():   # 건축공학과 공지사항 크롤링
+    BASE_URL = "https://archi.kw.ac.kr"
+    NOTICE_LIST_URL = "https://archi.kw.ac.kr/community/notice.php" 
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    res = requests.get(NOTICE_LIST_URL, headers=headers)
+    res.encoding = 'utf-8' # 한글 깨짐 방지
+    soup = BeautifulSoup(res.text, 'html.parser')
+    
+    # 1. 목록 파싱 (제목이 있는 테이블 찾기)
+    header = soup.find(lambda tag: tag.name in ['th', 'td'] and "제목" in tag.text)
+    
+    if header:
+        table = header.find_parent("table")
+        articles = table.select("tr")
+    else:
+        # 건축공학과는 .board_list 클래스를 주로 사용
+        articles = soup.select(".board_list tr")
+        if not articles: articles = soup.select("tbody tr")
+
+    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+    
+    results = []
+    target_count = 5 
+    
+    # 헤더 제외하고 반복
+    for article in articles[1:]: 
+        if len(results) >= target_count:
+            break
+
+        # [필터링] '공지' 글 건너뛰기
+        no_td = article.select_one("td")
+        if not no_td: continue
+        
+        no_text = no_td.get_text(strip=True)
+        # 공지글 확인 (notice_tr 클래스, "공지" 텍스트, 숫자 여부)
+        if "notice_tr" in article.get("class", []) or "공지" in no_text or not no_text.replace(",", "").isdigit():
+            continue
+
+        # [제목 추출]
+        title_td = article.select_one(".subject")
+        if not title_td: title_td = article.select_one(".title")
+        if not title_td: title_td = article.select_one("td.left")
+        
+        # 최후의 수단: 두 번째 칸
+        if not title_td:
+            tds = article.select("td")
+            if len(tds) > 2: title_td = tds[1]
+
+        if not title_td: continue
+
+        a_tag = title_td.select_one("a")
+        if not a_tag: continue
+
+        # [청소]
+        for junk in a_tag.select("img, span"): 
+            junk.decompose()
+
+        raw_title = a_tag.get_text(separator=" ", strip=True)
+        if "New" in raw_title: raw_title = raw_title.replace("New", "")
+        title = " ".join(raw_title.split())
+
+        # [링크 생성]
+        relative_link = a_tag['href']
+        if "http" not in relative_link:
+            clean_link = relative_link.replace("./", "")
+            if clean_link.startswith("/"):
+                link = f"https://archi.kw.ac.kr{clean_link}"
+            else:
+                # 건축공학과 공지사항은 community 폴더 안에 있음
+                link = f"{BASE_URL}/community/{clean_link}"
+        else:
+            link = relative_link
+        
+        # ---------------------------------------------------------------
+        # [상세 페이지 접속 & 본문 파싱]
+        # ---------------------------------------------------------------
+        sub_res = requests.get(link, headers=headers)
+        sub_res.encoding = 'utf-8'
+        sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
+
+        # [1단계] 메뉴바, 헤더, 푸터 등 방해꾼들 미리 제거 (Pre-cleaning)
+        global_trash = [
+            "header", "footer", "nav", 
+            "#header", "#footer", ".header", ".footer",
+            ".gnb", ".lnb", ".snb", 
+            ".top_menu", ".login_wrap", 
+            ".btn_list", ".paging_wrap", 
+            ".view_go", ".prev_next" # 이전글/다음글 목록 제거
+        ]
+        for selector in global_trash:
+            for tag in sub_soup.select(selector):
+                tag.decompose()
+
+        # [2단계] 본문 영역 찾기
+        # 건축공학과는 .view_con 클래스를 주로 사용
+        content_box = sub_soup.select_one(".view_con")
+        
+        if not content_box:
+            content_box = sub_soup.select_one(".board_view_con")
+        if not content_box:
+            content_box = sub_soup.select_one(".view_content")
+
+        img_urls = []
+        content = "본문 내용을 찾을 수 없습니다."
+
+        if content_box:
+            # 1. HWP 에디터 데이터 제거 (필수)
+            for hwp_junk in content_box.select("#hwpEditorBoardContent, .hwp_editor_board_content"):
+                hwp_junk.decompose()
+
+            # 2. 잡다한 태그 삭제
+            trash_tags = [".view-file", ".file", "dt", "dd", ".view-info", "ul.view-info", ".view_title_box"]
+            for selector in trash_tags:
+                for trash in content_box.select(selector):
+                    trash.decompose()
+            
+            content = content_box.get_text(separator="\n", strip=True)
+            content = content.replace("\n", " ").replace("\r", "").replace("\t", "")
+            content = content.replace("\u200b", "").replace("\xa0", " ")
+            
+            if len(content) > 3000:
+                content = content[:3000] + "...(내용 잘림)"
+
+            # [이미지 추출]
+            img_tags = content_box.select("img")
+            for img in img_tags:
+                src = img.get('src')
+                if not src: continue
+                if src.startswith("data:"): continue
+                if "icon" in src or "logo" in src or "common" in src: continue
+                
+                if not src.startswith("http"):
+                    if src.startswith("../"):
+                         src = src.replace("../", "")
+                         src = f"https://archi.kw.ac.kr/{src}"
+                    elif src.startswith("/"):
+                         src = f"https://archi.kw.ac.kr{src}"
+                    else:
+                         src = f"{BASE_URL}/community/{src}" 
+                img_urls.append(src)
+
+        crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # 요청하신 데이터 포맷 (data)
+        data = {
+            "crawled_at": crawled_time,
+            "full_text": content,
+            "image_url": img_urls,
+            "link": link,
+            "source": "건축공학과", # 출처 변경
+            "status": "pending",
+            "title": title
+        }
+        results.append(data)
+        print(f"[{data['source']}] 수집 성공: {title}")
+        
+    return results
+
+
+
+
 
 def save_to_firebase(data_list):     #파이어베이스 저장 함수
     print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
@@ -1578,7 +1740,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-crawled_data = get_kwsemicon_notices()     
+crawled_data = get_kwarchi_notices()     
 
 if crawled_data:
     save_to_firebase(crawled_data)
