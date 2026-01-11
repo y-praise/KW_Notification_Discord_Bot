@@ -1,16 +1,22 @@
-﻿
-import requests
+﻿import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 import hashlib
+import time
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 if not firebase_admin._apps:
     cred = credentials.Certificate("fkey.json") 
     firebase_admin.initialize_app(cred)
-
 db = firestore.client() # 데이터베이스 접속 객체
 
 
@@ -2039,6 +2045,134 @@ def get_kwenv_notices():   # 환경공학과 공지사항 크롤링
         
     return results
 
+def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
+    BASE_URL = "https://www.kwuarchitecture.com"
+    NOTICE_LIST_URL = "https://www.kwuarchitecture.com/blank-1" 
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless") 
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    
+    results = []
+    
+    try:
+        print(f"📡 [건축학과] 페이지 접속 중: {NOTICE_LIST_URL}")
+        driver.get(NOTICE_LIST_URL)
+        
+        # 1. 로딩 대기
+        print("⏳ 페이지 로딩 및 스크롤 중...")
+        time.sleep(5)
+        
+        # 스크롤을 내려서 게시글 로딩 유도
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 2);")
+        time.sleep(2)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(3)
+
+        # 2. 링크 수집
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        links = soup.select("a")
+        
+        notice_links = []
+        seen_links = set()
+
+        print(f"🧐 페이지 내 발견된 총 링크 수: {len(links)}개")
+
+        for a in links:
+            href = a.get('href', '')
+            if not href: continue
+            
+            # [핵심 수정] URL 패턴을 '/single-post/'로 변경!
+            if "/single-post/" in href:
+                # 중복 제거
+                if href not in seen_links:
+                    seen_links.add(href)
+                    notice_links.append(href)
+
+        print(f"🔍 공지사항으로 식별된 링크 수: {len(notice_links)}")
+        
+        target_count = 5 
+        
+        # 3. 상세 페이지 순회
+        for link in notice_links[:target_count]:
+            print(f"  👉 접속 시도: {link}")
+            driver.get(link)
+            
+            # 본문 로딩 대기
+            time.sleep(5) 
+            
+            sub_soup = BeautifulSoup(driver.page_source, 'html.parser')
+            
+            # [제목 추출]
+            title_tag = sub_soup.select_one("h1")
+            # 제목이 h1이 아닐 경우 span 등에서 스타일로 찾기
+            if not title_tag:
+                title_tags = sub_soup.select("span")
+                # 글자 크기가 큰 span을 제목으로 추정
+                for t in title_tags:
+                    style = t.get('style', '')
+                    if 'font-size' in style and ('2' in style or '3' in style or '4' in style): # 대충 큰 폰트
+                        title_tag = t
+                        break
+            
+            title = title_tag.get_text(strip=True) if title_tag else "제목 없음"
+
+            # [본문 추출] Wix 특유의 구조 대응
+            content_box = sub_soup.select_one("article")
+            if not content_box:
+                content_box = sub_soup.select_one("main")
+            if not content_box:
+                # Wix 텍스트 박스 클래스
+                content_box = sub_soup.select_one("div[data-testid='richTextElement']")
+
+            img_urls = []
+            content = "본문 내용을 찾을 수 없습니다."
+
+            if content_box:
+                for trash in content_box.select("style, script, button"):
+                    trash.decompose()
+                
+                content = content_box.get_text(separator="\n", strip=True)
+                if len(content) > 3000:
+                    content = content[:3000] + "..."
+
+                # 이미지 추출
+                img_tags = content_box.select("img")
+                for img in img_tags:
+                    src = img.get('src')
+                    if not src: continue
+                    # Wix 이미지 CDN 주소 처리
+                    if src.startswith("wix:image"): continue 
+                    if not src.startswith("http"): continue
+                    img_urls.append(src)
+
+            crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            data = {
+                "crawled_at": crawled_time,
+                "full_text": content,
+                "image_url": img_urls,
+                "link": link,
+                "source": "건축학과", 
+                "status": "pending",
+                "title": title
+            }
+            results.append(data)
+            print(f"  ✅ 수집 성공: {title}")
+
+    except Exception as e:
+        print(f"⚠️ 크롤링 중 오류 발생: {e}")
+        
+    finally:
+        driver.quit()
+        
+    return results
+
+
 
 def save_to_firebase(data_list):     #파이어베이스 저장 함수
     print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
@@ -2061,7 +2195,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-crawled_data = get_kwenv_notices()     
+crawled_data = get_kwuarchi_notices()     
 
 if crawled_data:
     save_to_firebase(crawled_data)
