@@ -6,6 +6,7 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 import hashlib
 import time
+import re
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -2172,6 +2173,173 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
         
     return results
 
+def get_kwchem_notices():   # 화학과 공지사항
+    BASE_URL = "https://chem.kw.ac.kr"
+    NOTICE_LIST_URL = "https://chem.kw.ac.kr/kor/board/department" 
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    res = requests.get(NOTICE_LIST_URL, headers=headers)
+    res.encoding = 'utf-8'
+    soup = BeautifulSoup(res.text, 'html.parser')
+    
+    # 목록 파싱
+    articles = soup.select(".board_list tbody tr")
+    if not articles: articles = soup.select("tr")
+
+    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+    
+    results = []
+    target_count = 5 
+    
+    for article in articles: 
+        if len(results) >= target_count:
+            break
+
+        # [필터링]
+        no_td = article.select_one("td")
+        if not no_td: continue
+        no_text = no_td.get_text(strip=True)
+        if not no_text.replace(",", "").isdigit():
+            continue
+
+        # [제목]
+        title_td = article.select_one(".subject")
+        if not title_td: title_td = article.select_one(".title")
+        if not title_td: title_td = article.select_one("td.left")
+        if not title_td:
+            tds = article.select("td")
+            if len(tds) > 2: title_td = tds[1]
+
+        if not title_td: continue
+        a_tag = title_td.select_one("a")
+        if not a_tag: continue
+
+        for junk in a_tag.select("img, span"): junk.decompose()
+        raw_title = a_tag.get_text(separator=" ", strip=True)
+        if "New" in raw_title: raw_title = raw_title.replace("New", "")
+        title = " ".join(raw_title.split())
+
+        # [링크]
+        relative_link = a_tag['href']
+        if "http" not in relative_link:
+            clean_link = relative_link.replace("./", "")
+            if clean_link.startswith("/"):
+                link = f"https://chem.kw.ac.kr{clean_link}"
+            else:
+                link = f"{BASE_URL}/kor/board/{clean_link}"
+        else:
+            link = relative_link
+        
+        # ---------------------------------------------------------------
+        # [상세 페이지 접속]
+        # ---------------------------------------------------------------
+        sub_res = requests.get(link, headers=headers)
+        sub_res.encoding = 'utf-8'
+        sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
+
+        # 1. 넓은 범위 잡기
+        content_box = sub_soup.select_one(".board_view")
+        if not content_box: content_box = sub_soup.select_one("#container")
+        if not content_box: content_box = sub_soup.select_one("body")
+
+        img_urls = []
+        
+        # [수정] 기본값을 빈 문자열로 설정 (못 찾으면 공백)
+        content = "" 
+
+        if content_box:
+            # 2. 태그 청소
+            trash_targets = [
+                "script", "style", "iframe",
+                "#footer", ".footer", "footer", 
+                ".btn_area", ".prev_next", ".view_btn", ".page_nav", # 버튼/네비 태그 삭제
+                "#hwpEditorBoardContent", ".hwp_editor_board_content"
+            ]
+            for selector in trash_targets:
+                for trash in content_box.select(selector):
+                    trash.decompose()
+
+            # 3. 텍스트 추출
+            raw_content = content_box.get_text(separator="\n", strip=True)
+            
+            # -----------------------------------------------------------
+            # [4. 앞부분 자르기] (헤더 제거)
+            # -----------------------------------------------------------
+            match_hit = re.search(r"조회\s*[\d,]+", raw_content)
+            match_date = re.search(r"작성일\s*[\d\.\-/]+", raw_content)
+            
+            if match_hit:
+                content = raw_content[match_hit.end():].strip()
+            elif match_date:
+                content = raw_content[match_date.end():].strip()
+            else:
+                content = raw_content
+
+            # -----------------------------------------------------------
+            # [5. 뒷부분 자르기] (푸터/버튼 텍스트 제거) - 정규식 사용
+            # -----------------------------------------------------------
+            # "목록" 뒤에 "이전"이나 "다음"이 공백/줄바꿈과 함께 나오는 패턴을 찾아서 날려버림
+            
+            # 패턴 1: 목록 이전 다음 (공백 포함)
+            # re.DOTALL을 써서 줄바꿈 문자도 포함하여 매칭
+            content = re.split(r"목록\s*이전\s*다음", content, flags=re.DOTALL)[0]
+            
+            # 패턴 2: 목록 수정 삭제
+            content = re.split(r"목록\s*수정\s*삭제", content, flags=re.DOTALL)[0]
+
+            # 패턴 3: 주소 정보 (서울 노원구...)
+            content = content.split("서울 노원구 광운로")[0]
+            
+            # 패턴 4: Copyright
+            content = content.split("COPYRIGHT")[0]
+            
+            # 패턴 5: 개인정보처리방침
+            content = content.split("개인정보처리방침")[0]
+
+            # 혹시 "목록" 단어 혼자 뒤에 남아있으면 제거
+            content = content.strip()
+            if content.endswith("목록"):
+                content = content[:-2].strip()
+
+            # 6. 마무리
+            content = content.replace("\u200b", "").replace("\xa0", " ")
+            if len(content) > 3000:
+                content = content[:3000] + "...(내용 잘림)"
+
+            # 이미지 추출
+            img_tags = content_box.select("img")
+            for img in img_tags:
+                src = img.get('src')
+                if not src: continue
+                if src.startswith("data:"): continue
+                
+                if not src.startswith("http"):
+                    if src.startswith("../"):
+                         src = src.replace("../", "")
+                         src = f"https://chem.kw.ac.kr/{src}"
+                    elif src.startswith("/"):
+                         src = f"https://chem.kw.ac.kr{src}"
+                    else:
+                         src = f"{BASE_URL}/kor/board/{src}"
+                img_urls.append(src)
+
+        crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        data = {
+            "crawled_at": crawled_time,
+            "full_text": content, # 없으면 "" (빈 문자열)
+            "image_url": img_urls,
+            "link": link,
+            "source": "화학과", 
+            "status": "pending",
+            "title": title
+        }
+        results.append(data)
+        print(f"[{data['source']}] 수집 성공: {title}")
+        
+    return results
+
+
 
 
 def save_to_firebase(data_list):     #파이어베이스 저장 함수
@@ -2195,7 +2363,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-crawled_data = get_kwuarchi_notices()     
+crawled_data = get_kwchem_notices()     
 
 if crawled_data:
     save_to_firebase(crawled_data)
