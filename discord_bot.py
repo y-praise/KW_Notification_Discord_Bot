@@ -248,7 +248,7 @@ def run_discord_bot(token_key, channel_id_key):
                 await public_channel.send(embed=embed)
             except: pass
 
-            subscribers = db.collection('subscriptions').stream()
+            subscribers = db.collection('subscriptions').where('keywords', 'array_contains', category).stream()
             
             for sub in subscribers:
                 sub_data = sub.to_dict()
@@ -259,17 +259,16 @@ def run_discord_bot(token_key, channel_id_key):
                 matched_reason = ""
 
                 if notice_dept:
-                    # 학과 공지: 학과와 카테고리를 둘 다 구독해야 함 (AND)
-                    has_dept_sub = notice_dept in user_keywords
-                    has_cat_sub = category in user_keywords
-                    if has_dept_sub and has_cat_sub:
+                    # 학과 공지인 경우: 
+                    # 이미 위에서 '카테고리' 구독자는 걸러서 가져왔으니, '학과'도 구독했는지 확인만 하면 됨
+                    if notice_dept in user_keywords:
                         should_send = True
                         matched_reason = f"{notice_dept} + {category}"
                 else:
-                    # 일반 공지: 카테고리만 맞으면 됨 (OR)
-                    if category in user_keywords:
-                        should_send = True
-                        matched_reason = f"{category}"
+                    # 일반 공지인 경우:
+                    # 위에서 이미 '카테고리' 구독자만 가져왔으므로 무조건 보냄
+                    should_send = True
+                    matched_reason = f"{category}"
 
                 if should_send:
                     try:
