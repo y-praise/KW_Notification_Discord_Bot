@@ -3,10 +3,15 @@ import time
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Firebase에 연결
+firebase_path = os.getenv("FIREBASE_CRED_PATH")
 if not firebase_admin._apps:
-    cred = credentials.Certificate('firebaseKey.json')  # Firebase 인증 키 파일 경로
+    cred = credentials.Certificate(firebase_path)
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()

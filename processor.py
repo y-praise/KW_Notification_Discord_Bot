@@ -8,18 +8,24 @@ import io
 import requests
 import re
 import itertools
+import os
+from dotenv import load_dotenv
+import itertools
+
+load_dotenv()
 
 # 사용할 API 키 리스트
 API_KEYS = [
-    "Gemini-API-Key-1",
-    #"Gemini-API-Key-2",
-    #"Gemini-API-Key-3",
+    os.getenv("GEMINI_API_KEY_1"),
+    os.getenv("GEMINI_API_KEY_2"),
+    os.getenv("GEMINI_API_KEY_3"),
 ]
 # 키를 순환하며 제공하는 이터레이터 생성
 key_rotation = itertools.cycle(API_KEYS)
 
 # Firebase에 연결
-cred = credentials.Certificate("firebaseKey.json")  # Firebase 인증 키 파일 경로
+firebase_path = os.getenv("FIREBASE_CRED_PATH")
+cred = credentials.Certificate(firebase_path)
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -167,9 +173,8 @@ def process_raw_to_refined():
 
         print("다음 공지사항 분석까지 10초 대기...")
         time.sleep(10)
-
-# 실행 부분 (테스트용)
 """
+# 실행 부분 (테스트용)
 if __name__ == "__main__":
     load_metadata()
     while True:
