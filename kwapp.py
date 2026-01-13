@@ -1,9 +1,11 @@
 ﻿import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+import os
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
+from dotenv import load_dotenv
 import hashlib
 import time
 import re
@@ -15,9 +17,19 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
+load_dotenv()
+
+key_path = os.getenv("FIREBASE_KEY_PATH")
+
 if not firebase_admin._apps:
-    cred = credentials.Certificate("fkey.json") 
+    if not key_path:
+        raise ValueError("FIREBASE_KEY_PATH 환경변수가 설정되지 않았습니다.")
+        
+    cred = credentials.Certificate(key_path) 
     firebase_admin.initialize_app(cred)
+
+db = firestore.client() # 데이터베이스 접속 객체
+
 db = firestore.client() # 데이터베이스 접속 객체
 
 
