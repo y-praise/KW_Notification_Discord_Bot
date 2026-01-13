@@ -3685,6 +3685,56 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
+def crawl_all_kw_sites():
+    crawling_functions = [
+        get_kw_notices,        # 광운대 본교
+        get_kwai_notices,      # 인공지능융합대학
+        get_kwei_notices,      # 전자정보공과대학
+        get_kwbiz_notices,     # 경영대학
+        get_kwingenium_notices, # 인제니움학부대학
+        get_kwchss_notices,    # 인문사회과학대학
+        get_kwee_notices,      # 전자공학과
+        get_kwelcomm_notices,  # 전자통신공학과
+        get_kwelecradiowave_notices, # 전자융합공학과
+        get_kwelectric_notices, # 전기공학과
+        get_kwem_notices,      # 전자재료공학과
+        get_kwsemicon_notices, # 반도체시스템공학부
+        get_kwarchi_notices,   # 건축공학과
+        get_kwchemng_notices,  # 화학공학과
+        get_kwenv_notices,     # 환경공학과
+        get_kwuarchi_notices,  # 건축학과
+        get_kwchem_notices,    # 화학과
+        get_kwsports_notices,  # 스포츠융합과학과
+        get_kwkorean_notices,  # 국어국문학과
+        get_kwpsy_notices,     # 산업심리학과
+        get_kwdnaci_notices,   # 동북아문화산업학부
+        get_kwpa_notices,      # 행정학과
+        get_kwlaw_notices,     # 법학부
+        get_kwliberal_notices  # 자율전공학부
+    ]
+
+    print(f"총 {len(crawling_functions)}개의 사이트 크롤링을 시작합니다.")
+
+    for func in crawling_functions:
+        try:
+            print(f"📡 [{func.__name__}] 실행 중...")
+            data = func() # 1. 개별 함수 실행
+            
+            if data and len(data) > 0:
+                # 2. 주석 해제 및 즉시 저장
+                save_to_firebase(data) 
+                print(f"✅ [{func.__name__}] 저장 완료")
+            else:
+                print(f"⚪ [{func.__name__}] 수집된 데이터가 없습니다.")
+                
+        except Exception as e:
+            print(f"❌ {func.__name__} 작업 중 에러 발생: {e}")
+        
+        time.sleep(2)
+
+    # 3. 개별 저장을 하므로 이제 빈 리스트를 반환하거나 성공 여부만 반환해도 됩니다.
+    return True
+
 crawled_data = get_kwliberal_notices()     
 
 if crawled_data:
