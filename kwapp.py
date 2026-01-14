@@ -1,9 +1,11 @@
 ﻿import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+import os
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
+from dotenv import load_dotenv
 import hashlib
 import time
 import re
@@ -15,9 +17,19 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
+load_dotenv()
+
+key_path = os.getenv("FIREBASE_KEY_PATH")
+
 if not firebase_admin._apps:
-    cred = credentials.Certificate("fkey.json") 
+    if not key_path:
+        raise ValueError("FIREBASE_KEY_PATH 환경변수가 설정되지 않았습니다.")
+        
+    cred = credentials.Certificate(key_path) 
     firebase_admin.initialize_app(cred)
+
+db = firestore.client() # 데이터베이스 접속 객체
+
 db = firestore.client() # 데이터베이스 접속 객체
 
 
@@ -3672,6 +3684,52 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         print(f"  - 저장 완료: {doc_id}")
         
     print("모든 데이터 저장 완료!")
+
+def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
+    crawling_functions = [
+        get_kw_notices,        # 광운대 본교
+        get_kwai_notices,      # 인공지능융합대학
+        get_kwei_notices,      # 전자정보공과대학
+        get_kwbiz_notices,     # 경영대학
+        get_kwingenium_notices, # 인제니움학부대학
+        get_kwchss_notices,    # 인문사회과학대학
+        get_kwee_notices,      # 전자공학과
+        get_kwelcomm_notices,  # 전자통신공학과
+        get_kwelecradiowave_notices, # 전자융합공학과
+        get_kwelectric_notices, # 전기공학과
+        get_kwem_notices,      # 전자재료공학과
+        get_kwsemicon_notices, # 반도체시스템공학부
+        get_kwarchi_notices,   # 건축공학과
+        get_kwchemng_notices,  # 화학공학과
+        get_kwenv_notices,     # 환경공학과
+        get_kwuarchi_notices,  # 건축학과
+        get_kwchem_notices,    # 화학과
+        get_kwsports_notices,  # 스포츠융합과학과
+        get_kwkorean_notices,  # 국어국문학과
+        get_kwpsy_notices,     # 산업심리학과
+        get_kwdnaci_notices,   # 동북아문화산업학부
+        get_kwpa_notices,      # 행정학과
+        get_kwlaw_notices,     # 법학부
+        get_kwliberal_notices  # 자율전공학부
+    ]
+
+    for func in crawling_functions:
+        try:
+            print(f"[{func.__name__}] 실행 중...")
+            data = func()
+            
+            if data and len(data) > 0:
+                save_to_firebase(data) 
+                print(f"[{func.__name__}] 실행 완료")
+            else:
+                print(f"[{func.__name__}] 수집된 데이터가 없습니다.")
+                
+        except Exception as e:
+            print(f"{func.__name__} 작업 중 에러 발생: {e}")
+        
+        time.sleep(2)
+
+    return True
 
 crawled_data = get_kwliberal_notices()     
 
