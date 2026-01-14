@@ -5,20 +5,25 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 import asyncio
+import os
+from dotenv import load_dotenv
 
 # --- [1. Firebase 접속 설정] ---
-cred = credentials.Certificate("firebase_key.json") 
+load_dotenv()
+firebase_path = os.getenv("FIREBASE_KEY_PATH")
+cred = credentials.Certificate(firebase_path)
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 # --- [2. 색상 및 DB 로드 함수] ---
 def get_color(category):
-    if '장학' in category or '등록' in category: return 0xFFD700 
-    elif '학사' in category or '입학' in category: return 0x1E90FF 
-    elif '취업' in category or '외부' in category: return 0x00FF00
-    elif '행사' in category or '봉사' in category: return 0xFFA500
-    else: return 0x95A5A6 
+    if '장학' in category or '복지' in category: return 0xFFD700 
+    elif '학사' in category or '행정' in category: return 0x1E90FF 
+    elif '취업' in category or '대외' in category: return 0x00FF00
+    elif '행사' in category or '시설' in category: return 0xFFA500
+    elif '글로벌' in category: return 0x9B59B6 
+    else: return 0x00CED1
 
 def get_metadata_from_db():
     try:
@@ -68,10 +73,12 @@ class DynamicSelect(Select):
             label = item
             
             notice_emoji_map = {
-                "장학": "💰", "등록": "🧾", "취업": "👔", "병무": "🪖",
-                "행사": "🎉", "봉사": "🤝", "학사": "🎓", "입학": "💌",
-                "학생": "🙋", "시설": "🛠️", "국제교류": "✈️", "국제학생": "🌏",
-                "외부": "🏢", "기타": "📂"
+                "장학": "💰", "복지": "🎁",     
+                "취업": "👔", "대외": "✨",      
+                "행사": "🎉", "시설": "🏢",    
+                "학사": "🎓", "행정": "📜",      
+                "글로벌": "🌏", "광운": "🏫",                  
+                "기타": "📂"                     
             }
             college_emoji_map = {
                 "전자정보": "⚡", "인공지능": "🤖", "공과": "🏗️", 
@@ -198,6 +205,20 @@ def run_discord_bot(token_key, channel_id_key):
         user_id = str(ctx.author.id)
         db.collection('subscriptions').document(user_id).delete()
         await ctx.send("🗑️ 모든 구독 설정을 초기화했습니다.")
+
+
+    @bot.command()
+    async def 도움말(ctx):
+        embed = discord.Embed(title="📘 그것이 알고싶다_알림봇 사용법", color=0x3498db)
+        embed.add_field(name="🚀 시작하기", value="채팅창에 `!구독설정`을 입력하면 메뉴가 뜹니다.", inline=False)
+        embed.add_field(name="⚙️ 주요 명령어", value=(
+            "**!구독설정**: 구독할 카테고리(장학, 학사 등) 및 학과 선택\n"
+            "**!내구독**: 현재 내가 구독 중인 리스트 확인\n"
+            "**!구독초기화**: 모든 설정 삭제"
+        ), inline=False)
+        embed.add_field(name="💡 참고", value="알림은 개인 DM으로 발송됩니다.", inline=False)
+        
+        await ctx.send(embed=embed)
 
     # 루프 함수: Firestore에서 새 공지 확인
     @tasks.loop(seconds=30) 
