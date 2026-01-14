@@ -3685,7 +3685,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
         
     print("모든 데이터 저장 완료!")
 
-def crawl_all_kw_sites():
+def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
     crawling_functions = [
         get_kw_notices,        # 광운대 본교
         get_kwai_notices,      # 인공지능융합대학
@@ -3713,26 +3713,22 @@ def crawl_all_kw_sites():
         get_kwliberal_notices  # 자율전공학부
     ]
 
-    print(f"총 {len(crawling_functions)}개의 사이트 크롤링을 시작합니다.")
-
     for func in crawling_functions:
         try:
-            print(f"📡 [{func.__name__}] 실행 중...")
-            data = func() # 1. 개별 함수 실행
+            print(f"[{func.__name__}] 실행 중...")
+            data = func()
             
             if data and len(data) > 0:
-                # 2. 주석 해제 및 즉시 저장
                 save_to_firebase(data) 
-                print(f"✅ [{func.__name__}] 저장 완료")
+                print(f"[{func.__name__}] 실행 완료")
             else:
-                print(f"⚪ [{func.__name__}] 수집된 데이터가 없습니다.")
+                print(f"[{func.__name__}] 수집된 데이터가 없습니다.")
                 
         except Exception as e:
-            print(f"❌ {func.__name__} 작업 중 에러 발생: {e}")
+            print(f"{func.__name__} 작업 중 에러 발생: {e}")
         
         time.sleep(2)
 
-    # 3. 개별 저장을 하므로 이제 빈 리스트를 반환하거나 성공 여부만 반환해도 됩니다.
     return True
 
 crawled_data = get_kwliberal_notices()     
