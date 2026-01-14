@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Firebase에 연결
-firebase_path = os.getenv("FIREBASE_CRED_PATH")
+firebase_path = os.getenv("FIREBASE_KEY_PATH")
 if not firebase_admin._apps:
     cred = credentials.Certificate(firebase_path)
     firebase_admin.initialize_app(cred)

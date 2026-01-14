@@ -24,7 +24,7 @@ API_KEYS = [
 key_rotation = itertools.cycle(API_KEYS)
 
 # Firebase에 연결
-firebase_path = os.getenv("FIREBASE_CRED_PATH")
+firebase_path = os.getenv("FIREBASE_KEY_PATH")
 cred = credentials.Certificate(firebase_path)
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
