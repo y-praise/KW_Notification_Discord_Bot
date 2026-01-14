@@ -5,9 +5,13 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 import asyncio
+import os
+from dotenv import load_dotenv
 
 # --- [1. Firebase 접속 설정] ---
-cred = credentials.Certificate("firebase_key.json") 
+load_dotenv()
+firebase_path = os.getenv("FIREBASE_KEY_PATH")
+cred = credentials.Certificate(firebase_path)
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 db = firestore.client()
