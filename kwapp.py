@@ -133,7 +133,7 @@ def get_kw_notices():
         
     return results  #광운대 공지사항 크롤링
 
-def get_kwai_notices():
+def get_kwai_notices():  # 인공지능융합대학 공지사항 크롤링
     BASE_URL = "https://aicon.kw.ac.kr/main/main.php"
     NOTICE_LIST_URL = "https://aicon.kw.ac.kr/administration/notice.php" 
 
@@ -3668,7 +3668,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
     print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
     
     # 'kw_notices'라는 이름의 컬렉션(폴더)에 저장
-    collection_ref = db.collection('test_notices') 
+    collection_ref = db.collection('raw_notices') 
     
     for data in data_list:
         raw_id = data['source']
@@ -3687,7 +3687,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
 
 def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
     crawling_functions = [
-        get_kw_notices,        # 광운대 본교
+        get_kw_notices,        # 광운대
         get_kwai_notices,      # 인공지능융합대학
         get_kwei_notices,      # 전자정보공과대학
         get_kwbiz_notices,     # 경영대학
@@ -3731,6 +3731,8 @@ def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
 
     return True
 
+
+"""
 crawled_data = get_kwliberal_notices()     
 
 if crawled_data:
@@ -3738,3 +3740,4 @@ if crawled_data:
 else:
     print("수집된 데이터가 없습니다.")
 
+"""
