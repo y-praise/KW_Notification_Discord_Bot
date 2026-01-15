@@ -16,6 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+import unicodedata
 
 load_dotenv()
 
@@ -2328,6 +2329,27 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
                 
                 content = content_box.get_text(separator="\n", strip=True)
                 
+                # 1. "조회수" 기준으로 뒤를 날림
+                # 예: "...취업 67 조회수 67회..." -> "...취업 67"
+                if "조회수" in content:
+                    content = content.rsplit("조회수", 1)[0].strip()
+                
+                # 2. "댓글"이 혹시 남았으면 날림
+                if "댓글" in content[-20:]: 
+                    content = content.rsplit("댓글", 1)[0].strip()
+
+                # 3. [NEW] 맨 뒤에 남은 "숫자"를 정규식으로 찾아 삭제
+                # 예: "...취업 67" -> "...취업"
+                # 설명: \s+ (공백) + \d+ (숫자들) + $ (문자열 끝)
+                content = re.sub(r'\s+\d+$', '', content)
+
+                # 4. 앞부분 "분 분량" (읽는 시간) 제거
+                if "분 분량" in content[:50]: 
+                    try:
+                        content = content.split("분 분량", 1)[1].strip()
+                    except:
+                        pass
+
                 content = content.replace("\u200b", "") # 폭 없는 공백 제거 (가장 중요)
                 content = content.replace("\xa0", " ")  # 특수 공백을 일반 공백으로 변경
                 content = content.replace("\r", "")     # 윈도우 줄바꿈 기호 제거
@@ -2920,6 +2942,29 @@ def get_kwmedia_notices():   # 미디어커뮤니케이션학부
                     title = "제목을 찾을 수 없음"
                     text_content = ""
                 
+                # 1. "조회" 단어 기준으로 뒤를 날림 (가장 확실함)
+                # 예: "...내용 끝. 250회 조회 명 학부조교..." -> "...내용 끝. 250회"
+                if "조회" in text_content:
+                    text_content = text_content.rsplit("조회", 1)[0].strip()
+
+                # 2. 조회 앞에 붙은 "숫자+회" (예: 250회) 제거
+                # 정규식 사용: 공백 + 숫자 + '회' + 문자열 끝($)
+                # import re 필요 (맨 위에 import re 추가하세요)
+                
+                text_content = re.sub(r'\s+\d+회$', '', text_content)
+
+                # 3. 기타 찌꺼기 제거 ("전체 회원 보기", "댓글" 등)
+                keywords_to_cut = ["전체 회원 보기", "Comments", "Recent Posts"]
+                for keyword in keywords_to_cut:
+                    if keyword in text_content:
+                        text_content = text_content.split(keyword)[0].strip()
+                
+                # 4. 특수문자 정제
+                text_content = text_content.replace("\u200b", "").replace("\xa0", " ")
+                
+                if len(text_content) > 3000:
+                    text_content = text_content[:3000] + "..."
+
                 # 제목 정제
                 title = title.replace("\u200b", "").replace("\xa0", " ")
                 
@@ -3842,13 +3887,18 @@ def get_kwenglish_notices():   # 영어산업학과
     return results
 
 def save_to_firebase(data_list):
-    collection_ref = db.collection('raw_notices')
+    collection_ref = db.collection('test_notices')
     new_post_count = 0
     
     # 텍스트 비교 전 공백/줄바꿈 제거 함수
     def normalize(text):
         if not text: return ""
-        return re.sub(r'\s+', '', text) # 모든 공백 및 줄바꿈 제거
+        # 1. 유니코드 정규화 (글자 깨짐 방지 및 통일)
+        text = unicodedata.normalize('NFKC', text)
+        # 2. 제로 위스 스페이스 등 특수 공백 제거
+        text = text.replace('\u200b', '').replace('\xa0', '')
+        # 3. 모든 공백 제거
+        return re.sub(r'\s+', '', text)
 
     for data in data_list:
         raw_id = data['source']
@@ -3925,6 +3975,7 @@ def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
         time.sleep(2)
 
     return True
+
 
 
 """
