@@ -3734,7 +3734,7 @@ def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
         get_kwlaw_notices,     # 법학부
         get_kwliberal_notices  # 자율전공학부
     ]
-
+    
     for func in crawling_functions:
         try:
             print(f"[{func.__name__}] 실행 중...")
