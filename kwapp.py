@@ -2327,6 +2327,12 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
                     trash.decompose()
                 
                 content = content_box.get_text(separator="\n", strip=True)
+                
+                content = content.replace("\u200b", "") # 폭 없는 공백 제거 (가장 중요)
+                content = content.replace("\xa0", " ")  # 특수 공백을 일반 공백으로 변경
+                content = content.replace("\r", "")     # 윈도우 줄바꿈 기호 제거
+                content = content.replace("\t", "")     # 탭 문자 제거
+                
                 if len(content) > 3000:
                     content = content[:3000] + "..."
 
@@ -2914,7 +2920,14 @@ def get_kwmedia_notices():   # 미디어커뮤니케이션학부
                     title = "제목을 찾을 수 없음"
                     text_content = ""
                 
+                # 제목 정제
+                title = title.replace("\u200b", "").replace("\xa0", " ")
+                
                 # 본문 정제
+                text_content = text_content.replace("\u200b", "") # 폭 없는 공백 제거
+                text_content = text_content.replace("\xa0", " ")  # 특수 공백 변환
+                
+                # 뒷부분 불필요 텍스트 제거
                 if "Comments" in text_content:
                     text_content = text_content.split("Comments")[0].strip()
                 if "Recent Posts" in text_content:
