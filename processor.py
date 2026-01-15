@@ -40,7 +40,6 @@ cached_types = []
 def load_metadata():
     global cached_depts, cached_colleges, cached_types
     try:
-        print("DB에서 최신 카테고리 목록을 동기화 중...")
         doc = db.collection('metadata').document('categories').get()
 
         if doc.exists:
@@ -48,10 +47,9 @@ def load_metadata():
             cached_depts = data.get('departments', [])
             cached_colleges = data.get('colleges', [])
             cached_types = data.get('notice_types', [])
-            print(f"동기화 완료")
 
     except Exception as e:
-        print(f"동기화 실패: {e}")
+        print(f"[분석] 동기화 실패: {e}")
 
 
 # 텍스트 정리 함수
@@ -131,7 +129,7 @@ def perform_gemini_analysis(batch_data):
         clean_json = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(clean_json)
     except Exception as e:
-        print(f"Gemini 분석 에러: {e}")
+        print(f"[분석] Gemini 분석 에러: {e}")
         return None
 
 
@@ -145,8 +143,7 @@ def process_raw_to_refined():
     for i in range(0, len(docs), 3):
         batch_docs = docs[i:i+3]
         batch_data = [d.to_dict() for d in batch_docs]
-        
-        print(f"{len(batch_docs)}개의 공지사항 분석 중...")
+        success_count = 0
         
         results = perform_gemini_analysis(batch_data)
         
@@ -166,12 +163,11 @@ def process_raw_to_refined():
                     'is_sent': False
                 })
                 doc.reference.update({'status': 'completed'})
-            print(f"분석 완료 ({[d.id for d in batch_docs]})")
+            success_count += 1
         else:
-            print("분석 실패 또는 결과 개수 불일치")
             for d in batch_docs: d.reference.update({'status': 'error'})
 
-        print("다음 공지사항 분석까지 10초 대기...")
+        print(f"[분석] {success_count}/{len(batch_docs)}개의 공지사항 처리 완료.")
         time.sleep(10)
 """
 # 실행 부분 (테스트용)

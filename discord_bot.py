@@ -166,6 +166,35 @@ class SubscribeView(View):
         if nature_sports_group:
             self.add_item(DynamicSelect("🧬 자연과학 & 체육 & 기타", nature_sports_group, "nature", user_subs))
 
+# [새로 추가] 설정창을 여는 버튼 (공용으로 떠 있는 것)
+class SubscriptionLauncher(View):
+    def __init__(self):
+        super().__init__(timeout=None) # 버튼이 영원히 작동하도록 설정
+
+    @discord.ui.button(label="🔔 구독 설정 열기 (클릭)", style=discord.ButtonStyle.primary, custom_id="open_settings_btn")
+    async def open_settings(self, interaction: discord.Interaction, button: discord.ui.Button):
+        user_id = str(interaction.user.id)
+        
+        # 1. DB에서 내 정보 가져오기
+        doc = db.collection('subscriptions').document(user_id).get()
+        current_subs = []
+        if doc.exists:
+            current_subs = doc.to_dict().get('keywords', [])
+        
+        # 2. 내 정보가 체크된 메뉴판 만들기
+        # (여기서 만드는 뷰는 ephemeral이므로 timeout이 있어도 상관없음)
+        view = SubscribeView(user_subs=current_subs)
+        
+        # 3. 나만 보이는 메시지로 전송 (ephemeral=True)
+        await interaction.response.send_message(
+            content="👇 **아래 메뉴에서 구독 정보를 수정하세요!** (변경 시 즉시 자동 저장됩니다)", 
+            view=view, 
+            ephemeral=True # <--- 핵심! 나한테만 보임
+        )
+
+
+
+
 #  [봇 실행 함수] 
 def run_discord_bot(token_key, channel_id_key):
     CHANNEL_ID = int(channel_id_key)
@@ -176,49 +205,14 @@ def run_discord_bot(token_key, channel_id_key):
     bot = commands.Bot(command_prefix='!', intents=intents)
 
     @bot.command()
-    async def 구독설정(ctx):
-        user_id = str(ctx.author.id)
-        doc = db.collection('subscriptions').document(user_id).get()
-        current_subs = []
-        if doc.exists:
-            current_subs = doc.to_dict().get('keywords', [])
-        await ctx.send(
-            "👇 **메뉴를 클릭해 구독을 설정하세요!** (이미 구독 중인 항목은 체크되어 있습니다)", 
-            view=SubscribeView(user_subs=current_subs)
-        )
-
-    @bot.command()
-    async def 내구독(ctx):
-        user_id = str(ctx.author.id)
-        doc = db.collection('subscriptions').document(user_id).get()
-        if doc.exists:
-            keywords = doc.to_dict().get('keywords', [])
-            if keywords:
-                await ctx.send(f"📋 **{ctx.author.name}**님의 구독 리스트:\n{', '.join(keywords)}")
-            else:
-                await ctx.send("구독 중인 키워드가 없습니다.")
-        else:
-            await ctx.send("아직 구독 설정이 없습니다.")
-
-    @bot.command()
-    async def 구독초기화(ctx):
-        user_id = str(ctx.author.id)
-        db.collection('subscriptions').document(user_id).delete()
-        await ctx.send("🗑️ 모든 구독 설정을 초기화했습니다.")
-
-
-    @bot.command()
-    async def 도움말(ctx):
-        embed = discord.Embed(title="📘 그것이 알고싶다_알림봇 사용법", color=0x3498db)
-        embed.add_field(name="🚀 시작하기", value="채팅창에 `!구독설정`을 입력하면 메뉴가 뜹니다.", inline=False)
-        embed.add_field(name="⚙️ 주요 명령어", value=(
-            "**!구독설정**: 구독할 카테고리(장학, 학사 등) 및 학과 선택\n"
-            "**!내구독**: 현재 내가 구독 중인 리스트 확인\n"
-            "**!구독초기화**: 모든 설정 삭제"
-        ), inline=False)
-        embed.add_field(name="💡 참고", value="알림은 개인 DM으로 발송됩니다.", inline=False)
+    async def 설치(ctx):
+        embed = discord.Embed(title="📢 공지 알림 구독 센터", description="버튼을 눌러 나만의 알림 설정을 시작하세요!", color=0x00CED1)
+        embed.add_field(name="❓ 어떻게 쓰나요?", value="아래 **'구독 설정 열기'** 버튼을 누르면,\n나만 볼 수 있는 설정 메뉴가 나타납니다.", inline=False)
+        embed.add_field(name="💾 내 정보 불러오기", value="버튼을 누르면 **내가 기존에 구독했던 항목이 체크된 상태**로 뜹니다.", inline=False)
+        embed.set_footer(text="Team 그것이 알고싶다", icon_url="https://i.imgur.com/RJ8Zgm0.png")
         
-        await ctx.send(embed=embed)
+        # 메뉴판(SubscribeView) 대신 버튼(SubscriptionLauncher)을 보냄
+        await ctx.send(embed=embed, view=SubscriptionLauncher())
 
     # 루프 함수: Firestore에서 새 공지 확인
     @tasks.loop(seconds=30) 
@@ -306,7 +300,9 @@ def run_discord_bot(token_key, channel_id_key):
     @bot.event
     async def on_ready():
         print(f'🔥 {bot.user} 봇이 준비되었습니다!')
+        
+        bot.add_view(SubscriptionLauncher())
+        
         check_firestore.start()
-
     # 봇 실행
     bot.run(token_key)

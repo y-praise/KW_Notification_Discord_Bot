@@ -29,10 +29,10 @@ def get_instagram_mapping():
                 mapping.update(item) # 각 맵 요소를 하나로 합침
             return mapping
         else:
-            print("Firebase에서 매핑 데이터를 찾을 수 없습니다.")
+            print("[크롤링] Firebase에서 매핑 데이터를 찾을 수 없습니다.")
             return {}
     except Exception as e:
-        print(f"매핑 데이터 로드 실패: {e}")
+        print(f"[크롤링] 매핑 데이터 로드 실패: {e}")
         return {}
 
 
@@ -43,7 +43,7 @@ def crawl_multiple_instagram_accounts():
     account_list = list(ACCOUNT_MAP.keys())
     
     if not account_list:
-        print("조회할 계정이 없습니다. 프로그램을 종료합니다.")
+        print("[크롤링] 조회할 계정이 없습니다. 프로그램을 종료합니다.")
         return
 
     L = instaloader.Instaloader()
@@ -58,7 +58,6 @@ def crawl_multiple_instagram_accounts():
         try:
             # 계정 이름 매핑
             account_display_name = ACCOUNT_MAP.get(target_id, target_id)
-            print(f"\n{'='*20} [{account_display_name}] 접속 중 {'='*20}")
             
             # 프로필 로드
             profile = instaloader.Profile.from_username(L.context, target_id)
@@ -85,9 +84,7 @@ def crawl_multiple_instagram_accounts():
                 doc_id = f"{account_display_name}__{post.shortcode}(instagram)"
                 doc_ref = db.collection("raw_notices").document(doc_id)
                 
-                if doc_ref.get().exists:
-                    print(f"[-] ({valid_post_count}/4) 중복 스킵: {post.shortcode}")
-                else:
+                if doc_ref.get().exists == False:
                     # 이미지 추출 (단일/다중 이미지 대응)
                     image_urls = []
                     if post.typename == 'GraphSidecar':     # 다중 이미지 게시물
@@ -107,22 +104,22 @@ def crawl_multiple_instagram_accounts():
                         "image_url": image_urls,
                         "link": f"https://www.instagram.com/p/{post.shortcode}/",
                         "source": account_display_name,
-                        "status": "completed",
+                        "status": "pending",
                         "title": title
                     }
 
                     doc_ref.set(doc_data)
-                    print(f"({valid_post_count}/4) '{account_display_name}' 저장 완료")
 
                 # 유효 게시물 4개를 채우면 다음 계정으로
                 if valid_post_count >= 4:
+                    print(f"[크롤링] {account_display_name}(instagram) - {valid_post_count}개 게시물 저장 완료")
                     break
 
             # 계정 간 차단 방지를 위한 대기
             time.sleep(12)
 
         except Exception as e:
-            print(f"\n[{target_id}] 처리 중 에러: {e}")
+            print(f"\n[[크롤링] {target_id}] 처리 중 에러: {e}")
             time.sleep(20)
 
 
