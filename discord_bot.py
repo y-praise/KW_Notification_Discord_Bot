@@ -18,12 +18,21 @@ db = firestore.client()
 
 # --- [2. 색상 및 DB 로드 함수] ---
 def get_color(category):
-    if '장학' in category or '복지' in category: return 0xFFD700 
-    elif '학사' in category or '행정' in category: return 0x1E90FF 
-    elif '취업' in category or '대외' in category: return 0x00FF00
-    elif '행사' in category or '시설' in category: return 0xFFA500
-    elif '글로벌' in category: return 0x9B59B6 
-    else: return 0x00CED1
+    if isinstance(category, list):
+        category = " ".join(category)
+
+    if '학사' in category or '행정' in category: 
+        return 0x3498DB 
+    elif '장학' in category or '복지' in category: 
+        return 0xFFD700 
+    elif '취업' in category or '대외' in category: 
+        return 0x2ECC71
+    elif '글로벌' in category: 
+        return 0x9B59B6 
+    elif '행사' in category or '시설' in category: 
+        return 0xE67E22
+    else: 
+        return 0x2C3E50
 
 def get_metadata_from_db():
     try:
@@ -251,8 +260,7 @@ def run_discord_bot(token_key, channel_id_key):
                     break
             
             try:
-                embed = discord.Embed(title=title, description="", color=get_color(category))
-                embed.set_author(name=f"📢 {category} 공지")
+                embed = discord.Embed(title=title, description="", color=get_color(raw_category))
                 if deadline: embed.add_field(name="📅 마감일", value=deadline, inline=True)
                 if source: embed.add_field(name="🏢 출처", value=source, inline=True)
                 if processed_at: embed.add_field(name="🕒 수집일", value=processed_at, inline=False)
