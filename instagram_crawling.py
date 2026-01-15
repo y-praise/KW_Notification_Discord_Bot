@@ -55,6 +55,7 @@ def crawl_multiple_instagram_accounts():
 
     # 각 계정별 크롤링 시작
     for target_id in account_list:
+        new_post_count = 0
         try:
             # 계정 이름 매핑
             account_display_name = ACCOUNT_MAP.get(target_id, target_id)
@@ -109,10 +110,11 @@ def crawl_multiple_instagram_accounts():
                     }
 
                     doc_ref.set(doc_data)
+                    new_post_count += 1
 
                 # 유효 게시물 4개를 채우면 다음 계정으로
                 if valid_post_count >= 4:
-                    print(f"[크롤링] {account_display_name}(instagram) - {valid_post_count}개 게시물 저장 완료")
+                    print(f"[크롤링] {account_display_name}(instagram) - {new_post_count}개 게시물 저장 완료")
                     break
 
             # 계정 간 차단 방지를 위한 대기
