@@ -140,18 +140,15 @@ def get_kwai_notices():
     BASE_URL = "https://aicon.kw.ac.kr/main/main.php"
     NOTICE_LIST_URL = "https://aicon.kw.ac.kr/administration/notice.php" 
 
-
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     results = []
-    page = 1 # 1페이지부터 시작
-    target_count = 5 # 수집하고 싶은 '일반' 게시글 수
-
-    # 목표 개수를 채울 때까지 계속 반복 (단, 최대 5페이지까지만 제한)
+    page = 1 
+    target_count = 5 
+    
     while len(results) < target_count and page <= 5:
-        
-        # 페이지 번호가 포함된 URL 접속
 
+        
         url = f"{NOTICE_LIST_URL}?page={page}"
         
         try:
@@ -159,30 +156,24 @@ def get_kwai_notices():
             res.encoding = 'utf-8'
             soup = BeautifulSoup(res.text, 'html.parser')
             
-            # 행(tr) 가져오기
             articles = soup.select(".board-list tr")
             if not articles: articles = soup.select("tbody tr")
             
             if not articles:
+                print("게시글 목록을 찾을 수 없습니다. 크롤링 종료.")
                 break
 
-            # 헤더(첫 줄) 제외하고 반복
             for article in articles[1:]:
-                # 목표 개수 다 채웠으면 즉시 중단
                 if len(results) >= target_count:
                     break
 
-                # 첫 번째 칸(td)에 번호나 '공지' 텍스트가 들어있음
                 no_td = article.select_one("td")
                 if not no_td: continue
-                
                 no_text = no_td.get_text(strip=True)
                 
-                # "공지"라고 적혀있으면 건너뛰기 (이미지 아이콘인 경우도 있음)
                 if "공지" in no_text or article.select_one("img[src*='ico_nt']"):
                     continue
                 
-                # --- [제목 추출] ---
                 title_td = article.select_one(".subject")
                 if not title_td: title_td = article.select_one(".title")
                 if not title_td: title_td = article.select_one("td.left")
@@ -195,11 +186,35 @@ def get_kwai_notices():
                 a_tag = title_td.select_one("a")
                 if not a_tag: continue
 
-                # 청소
-                for junk in a_tag.select("img, span"): junk.decompose()
+                # -----------------------------------------------------------
+                # [수정 1] 태그를 삭제하기 전에 원본 텍스트를 먼저 확보하여 분류
+                # -----------------------------------------------------------
+                full_raw_text = a_tag.get_text(strip=True) # 태그 삭제 전 전체 텍스트
+                
+                source_name = "인공지능융합대학" # 기본값
+
+                if "컴퓨터" in full_raw_text:
+                    source_name = "컴퓨터정보공학부"
+                elif "소프트웨어" in full_raw_text or "소융" in full_raw_text:
+                    source_name = "소프트웨어학부"
+                elif "정보융합" in full_raw_text:
+                    source_name = "정보융합학부"
+                elif "로봇" in full_raw_text:
+                    source_name = "로봇학부"
+
+                # -----------------------------------------------------------
+                # [수정 2] 분류가 끝난 후 불필요한 태그 청소 (제목 정리)
+                # -----------------------------------------------------------
+                # 이미지만 삭제 (span은 학부명이 들어있을 수 있으므로 놔두거나 신중히 삭제)
+                for img in a_tag.select("img"): 
+                    img.decompose()
+                
+                # 'New' 아이콘이나 텍스트만 콕 집어서 제거 (span 전체 삭제 X)
+                for span in a_tag.select("span"):
+                    if "New" in span.get_text() or "new" in span.get("class", []):
+                        span.decompose()
 
                 raw_title = a_tag.get_text(separator=" ", strip=True)
-                if "New" in raw_title: raw_title = raw_title.replace("New", "")
                 title = " ".join(raw_title.split())
 
                 # --- [링크 생성] ---
@@ -227,13 +242,13 @@ def get_kwai_notices():
                     if content_box: break
 
                 if not content_box:
-                     divs = sub_soup.select("div")
-                     valid_divs = [d for d in divs if len(d.text) > 50]
-                     if valid_divs:
-                        content_box = max(valid_divs, key=lambda x: len(x.text))
+                      divs = sub_soup.select("div")
+                      valid_divs = [d for d in divs if len(d.text) > 50]
+                      if valid_divs:
+                         content_box = max(valid_divs, key=lambda x: len(x.text))
 
                 img_urls = []
-                content = ""
+                content = "본문 내용을 찾을 수 없습니다."
 
                 if content_box:
                     trash_tags = [".table_view_list", ".view_file", ".file_area", "dt", "dd", ".view_title_box"]
@@ -268,28 +283,23 @@ def get_kwai_notices():
                 crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 data = {
-                    "crawled_at": crawled_time, #크롤링한시간
-                    "full_text": content, #본문내용
-                    "image_url": img_urls,  #이미지 url
-                    "link": link,   #링크
-                    "source": "인공지능융합대학",
+                    "crawled_at": crawled_time,
+                    "full_text": content,
+                    "image_url": img_urls,
+                    "link": link,
+                    "source": source_name, # 분류된 이름 저장
                     "status": "pending",
-                    "title": title  #제목
+                    "title": title
                 }
                 results.append(data)
-                
+               
         
         except Exception as e:
             print(f"Page {page} 크롤링 중 에러 발생: {e}")
         
-        # 다음 페이지로 이동
         page += 1
-    
-    if results:
-        print(f"[{results[0]['source']}] 총 {len(results)}개의 공지사항을 크롤링")
-    else:
-        print("[인공지능융합대학] 크롤링된 공지사항이 없음")     
-    return results  #인융대 공지사항 크롤링
+    print("[인공지능융합대학] 크롤링 완료")       
+    return results  #인공지능융합대학 크롤링
 
 def get_kwei_notices():   # 전자정보공과대학 공지사항 크롤링
     BASE_URL = "https://ei.kw.ac.kr/community"
