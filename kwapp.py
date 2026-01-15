@@ -129,7 +129,7 @@ def get_kw_notices():
             "title": title  #제목
         }
         results.append(data)
-        print(f"title : {title}")  #제목 모음들
+
         
     return results  #광운대 공지사항 크롤링
 
@@ -295,7 +295,7 @@ def get_kwai_notices():
             print(f"Page {page} 크롤링 중 에러 발생: {e}")
         
         page += 1
-    print("[인공지능융합대학] 크롤링 완료")       
+     
     return results  #인공지능융합대학 크롤링
 
 def get_kwei_notices():   # 전자정보공과대학 공지사항 크롤링
@@ -316,8 +316,7 @@ def get_kwei_notices():   # 전자정보공과대학 공지사항 크롤링
         articles = soup.select(".board_table tr") # board-table이 아니라 board_table(언더바)
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
-    
+
     results = []
     target_count = 5 
     
@@ -428,7 +427,7 @@ def get_kwei_notices():   # 전자정보공과대학 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -603,7 +602,6 @@ def get_kwingenium_notices():   # 인제니움학부대학 공지사항 크롤�
         articles = soup.select(".list_wrap table tbody tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
     
     results = []
     target_count = 5 
@@ -725,7 +723,7 @@ def get_kwingenium_notices():   # 인제니움학부대학 공지사항 크롤�
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -748,8 +746,7 @@ def get_kwchss_notices():   # 인문사회과학대학 공지사항 크롤링
         articles = soup.select(".board_list tbody tr")
         if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
-    
+
     results = []
     target_count = 5 
     
@@ -879,7 +876,7 @@ def get_kwchss_notices():   # 인문사회과학대학 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -903,8 +900,7 @@ def get_kwee_notices():   # 전자공학과 공지사항 크롤링
         articles = soup.select(".board_list tbody tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
-    
+
     results = []
     target_count = 5 
     
@@ -1021,7 +1017,7 @@ def get_kwee_notices():   # 전자공학과 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -1046,7 +1042,7 @@ def get_kwelcomm_notices():   # 전자통신공학과 공지사항 크롤링
         articles = soup.select(".board_list tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -1169,7 +1165,7 @@ def get_kwelcomm_notices():   # 전자통신공학과 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -1193,7 +1189,7 @@ def get_kwelecradiowave_notices():   # 전자융합공학과 공지사항 크롤
         articles = soup.select(".board_list tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -1316,7 +1312,7 @@ def get_kwelecradiowave_notices():   # 전자융합공학과 공지사항 크롤
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -1340,7 +1336,7 @@ def get_kwelectric_notices():   # 전기공학과 공지사항 크롤링
         articles = soup.select(".board_list tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -1462,7 +1458,7 @@ def get_kwelectric_notices():   # 전기공학과 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -1486,7 +1482,7 @@ def get_kwem_notices():   # 전자재료공학과 공지사항 크롤링
         articles = soup.select(".board_list tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -1605,7 +1601,7 @@ def get_kwem_notices():   # 전자재료공학과 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -1629,7 +1625,7 @@ def get_kwsemicon_notices():   # 반도체시스템공학부 공지사항 크롤
         articles = soup.select(".board_list tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -1750,7 +1746,7 @@ def get_kwsemicon_notices():   # 반도체시스템공학부 공지사항 크롤
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -1774,8 +1770,7 @@ def get_kwarchi_notices():   # 건축공학과 공지사항 크롤링
         articles = soup.select(".board_list tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
-    
+
     results = []
     target_count = 5 
     
@@ -1909,7 +1904,7 @@ def get_kwarchi_notices():   # 건축공학과 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -1932,7 +1927,7 @@ def get_kwchemng_notices():   # 화학공학과 공지사항 크롤링
         articles = soup.select(".board_list tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -2068,7 +2063,7 @@ def get_kwchemng_notices():   # 화학공학과 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -2092,7 +2087,7 @@ def get_kwenv_notices():   # 환경공학과 공지사항 크롤링
         articles = soup.select(".board_list tr")
         if not articles: articles = soup.select("tbody tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -2233,7 +2228,7 @@ def get_kwenv_notices():   # 환경공학과 공지사항 크롤링
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -2252,11 +2247,11 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
     results = []
     
     try:
-        print(f"📡 [건축학과] 페이지 접속 중: {NOTICE_LIST_URL}")
+
         driver.get(NOTICE_LIST_URL)
         
         # 1. 로딩 대기
-        print("⏳ 페이지 로딩 및 스크롤 중...")
+
         time.sleep(5)
         
         # 스크롤을 내려서 게시글 로딩 유도
@@ -2272,7 +2267,7 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
         notice_links = []
         seen_links = set()
 
-        print(f"🧐 페이지 내 발견된 총 링크 수: {len(links)}개")
+
 
         for a in links:
             href = a.get('href', '')
@@ -2285,13 +2280,13 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
                     seen_links.add(href)
                     notice_links.append(href)
 
-        print(f"🔍 공지사항으로 식별된 링크 수: {len(notice_links)}")
+
         
         target_count = 5 
         
         # 3. 상세 페이지 순회
         for link in notice_links[:target_count]:
-            print(f"  👉 접속 시도: {link}")
+
             driver.get(link)
             
             # 본문 로딩 대기
@@ -2354,7 +2349,7 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
                 "title": title
             }
             results.append(data)
-            print(f"  ✅ 수집 성공: {title}")
+
 
     except Exception as e:
         print(f"⚠️ 크롤링 중 오류 발생: {e}")
@@ -2377,7 +2372,7 @@ def get_kwchem_notices():   # 화학과 공지사항
     articles = soup.select(".board_list tbody tr")
     if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -2526,8 +2521,7 @@ def get_kwchem_notices():   # 화학과 공지사항
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
-        
+    
     return results
 
 def get_kwsports_notices():   # 스포츠융합과학과
@@ -2543,7 +2537,7 @@ def get_kwsports_notices():   # 스포츠융합과학과
     articles = soup.select(".board_list tbody tr")
     if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -2671,7 +2665,7 @@ def get_kwsports_notices():   # 스포츠융합과학과
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -2688,7 +2682,7 @@ def get_kwkorean_notices():   # 국어국문학과
     articles = soup.select(".board_list tbody tr")
     if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -2820,7 +2814,7 @@ def get_kwkorean_notices():   # 국어국문학과
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -2840,15 +2834,15 @@ def get_kwmedia_notices():   # 미디어커뮤니케이션학부
     
     try:
         # 1. 목록 페이지 접속
-        print(f"📡 [미디어센터] 목록 페이지 접속: {TARGET_URL}")
+
         driver.get(TARGET_URL)
         
         # [수정] 대기 시간 대폭 연장 (10초)
-        print("⏳ 게시글 목록 로딩 중 (10초 대기)...")
+
         time.sleep(10) 
         
         # [수정] 스크롤을 천천히 여러 번 내려서 데이터를 확실하게 로딩
-        print("📜 스크롤 다운 중...")
+
         for i in range(1, 4):
             driver.execute_script(f"window.scrollTo(0, {i * 400});") # 400px씩 부드럽게 내림
             time.sleep(2)
@@ -2873,11 +2867,11 @@ def get_kwmedia_notices():   # 미디어커뮤니케이션학부
                     seen_links.add(href)
                     target_links.append(href)
 
-        print(f"🔍 발견된 게시글: {len(target_links)}개 (최신 5개 수집)")
+
         
         # 3. 상세 페이지 순회
         for link in target_links[:5]: 
-            print(f"  👉 [접속] {link}")
+
             driver.get(link)
             
             # 상세 페이지 로딩 시간도 충분히 (7초)
@@ -2950,7 +2944,7 @@ def get_kwmedia_notices():   # 미디어커뮤니케이션학부
                 "status": "completed"
             }
             results.append(data)
-            print(f"  ✅ 수집 성공: {title}")
+
 
     except Exception as e:
         print(f"⚠️ 크롤링 중 오류 발생: {e}")
@@ -2973,7 +2967,7 @@ def get_kwpsy_notices():   # 산업심리학과
     articles = soup.select(".board_list tbody tr")
     if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -3100,7 +3094,7 @@ def get_kwpsy_notices():   # 산업심리학과
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -3117,7 +3111,7 @@ def get_kwdnaci_notices():   # 동북아문화산업학부
     articles = soup.select(".board_list tbody tr")
     if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -3246,7 +3240,7 @@ def get_kwdnaci_notices():   # 동북아문화산업학부
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -3263,7 +3257,7 @@ def get_kwpa_notices():   # 행정학과
     articles = soup.select(".board_list tbody tr")
     if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -3392,7 +3386,7 @@ def get_kwpa_notices():   # 행정학과
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -3409,7 +3403,7 @@ def get_kwlaw_notices():   # 법학부
     articles = soup.select(".board_list tbody tr")
     if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -3538,7 +3532,7 @@ def get_kwlaw_notices():   # 법학부
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
+
         
     return results
 
@@ -3555,7 +3549,7 @@ def get_kwliberal_notices():   # 자율전공학부
     articles = soup.select(".board_list tbody tr")
     if not articles: articles = soup.select("tr")
 
-    print(f"🔍 찾아낸 게시글 수: {len(articles)}")
+
     
     results = []
     target_count = 5 
@@ -3684,8 +3678,7 @@ def get_kwliberal_notices():   # 자율전공학부
             "title": title
         }
         results.append(data)
-        print(f"[{data['source']}] 수집 성공: {title}")
-        
+
     return results
 
 def get_kwenglish_notices():   # 영어산업학과
