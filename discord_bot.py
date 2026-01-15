@@ -18,12 +18,18 @@ db = firestore.client()
 
 # --- [2. 색상 및 DB 로드 함수] ---
 def get_color(category):
-    if '장학' in category or '복지' in category: return 0xFFD700 
-    elif '학사' in category or '행정' in category: return 0x1E90FF 
-    elif '취업' in category or '대외' in category: return 0x00FF00
-    elif '행사' in category or '시설' in category: return 0xFFA500
-    elif '글로벌' in category: return 0x9B59B6 
-    else: return 0x00CED1
+    if '학사' in category or '행정' in category: 
+        return 0x3498DB 
+    elif '장학' in category or '복지' in category: 
+        return 0xFFD700 
+    elif '취업' in category or '대외' in category: 
+        return 0x2ECC71
+    elif '글로벌' in category: 
+        return 0x9B59B6 
+    elif '행사' in category or '시설' in category: 
+        return 0xE67E22
+    else: 
+        return 0x95A5A6
 
 def get_metadata_from_db():
     try:
