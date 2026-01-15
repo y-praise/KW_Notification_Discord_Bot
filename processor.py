@@ -81,6 +81,8 @@ def perform_gemini_analysis(batch_data):
         # 공지 본문 정리
         cleaned_text = clean_text(data.get('full_text', ''))
         notices_context += f"--- [공지 {i+1} 본문] ---\n{cleaned_text}\n\n"
+        notices_context += f"[공지 출처]: {data.get('source', '알 수 없음')}\n"
+        notices_context += f"[공지 링크]: {data.get('link', '')}\n\n"
         
         # 이미지 첨부
         image_urls = data.get('image_url', [])
@@ -101,6 +103,8 @@ def perform_gemini_analysis(batch_data):
     1. 대상 학과나 단과대가 특정되지 않았다면 '전체'를 포함할 것.
     2. 반드시 제공된 목록에 있는 이름만 사용할 것.
     3. '학과명 혹은 단과대명'과 '공지 타입'은 각각 여러개일 수 있음.
+    4. '학과명 혹은 단과대명'은 '공지 출처'를 참고하여 판단할 것.
+    5. 인스타그램에서 크롤링된 공지는 행사, 취업 외에는 '기타'로 분류할 것(공지 링크로 구분).
     
     [학과 목록]: {dept_str}
     [단과대 목록]: {college_str}

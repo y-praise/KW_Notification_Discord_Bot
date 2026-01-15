@@ -125,7 +125,7 @@ def get_kw_notices():
             "image_url": img_urls,  #이미지 url
             "link": link,   #링크
             "source": "광운대학교",
-            "status": "pending",
+            "status": "completed",
             "title": title  #제목
         }
         results.append(data)
@@ -298,8 +298,8 @@ def get_kwai_notices():
             print(f"Page {page} 크롤링 중 에러 발생: {e}")
         
         page += 1
-    print("[인공지능융합대학] 크롤링 완료")       
-    return results  #인공지능융합대학 크롤링
+        
+    return results  #인융대 공지사항 크롤링
 
 def get_kwei_notices():   # 전자정보공과대학 공지사항 크롤링
     BASE_URL = "https://ei.kw.ac.kr/community"
@@ -425,7 +425,7 @@ def get_kwei_notices():   # 전자정보공과대학 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "전자정보공과대학",
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -562,7 +562,7 @@ def get_kwbiz_notices():   # 경영대학 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "경영대학", 
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -710,7 +710,7 @@ def get_kwingenium_notices():   # 인제니움학부대학 공지사항 크롤�
             "image_url": img_urls,
             "link": link,
             "source": "인제니움학부대학", 
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -865,7 +865,7 @@ def get_kwchss_notices():   # 인문사회과학대학 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "인문사회과학대학", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -1008,7 +1008,7 @@ def get_kwee_notices():   # 전자공학과 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "전자공학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -1157,7 +1157,7 @@ def get_kwelcomm_notices():   # 전자통신공학과 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "전자통신공학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -1306,7 +1306,7 @@ def get_kwelecradiowave_notices():   # 전자융합공학과 공지사항 크롤
             "image_url": img_urls,
             "link": link,
             "source": "전자융합공학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -1453,7 +1453,7 @@ def get_kwelectric_notices():   # 전기공학과 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "전기공학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -1596,7 +1596,7 @@ def get_kwem_notices():   # 전자재료공학과 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "전자재료공학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -1742,7 +1742,7 @@ def get_kwsemicon_notices():   # 반도체시스템공학부 공지사항 크롤
             "image_url": img_urls,
             "link": link,
             "source": "반도체시스템공학부", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -1903,7 +1903,7 @@ def get_kwarchi_notices():   # 건축공학과 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "건축공학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -2063,7 +2063,7 @@ def get_kwchemng_notices():   # 화학공학과 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "화학공학과", 
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -2229,7 +2229,7 @@ def get_kwenv_notices():   # 환경공학과 공지사항 크롤링
             "image_url": img_urls,
             "link": link,
             "source": "환경공학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -2346,7 +2346,7 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
                 "image_url": img_urls,
                 "link": link,
                 "source": "건축학과", 
-                "status": "pending",
+                "status": "completed",
                 "title": title
             }
             results.append(data)
@@ -2519,7 +2519,7 @@ def get_kwchem_notices():   # 화학과 공지사항
             "image_url": img_urls,
             "link": link,
             "source": "화학과", 
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -2665,7 +2665,7 @@ def get_kwsports_notices():   # 스포츠융합과학과
             "image_url": img_urls,
             "link": link,
             "source": "스포츠융합과학과", 
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -2815,7 +2815,7 @@ def get_kwkorean_notices():   # 국어국문학과
             "image_url": img_urls,
             "link": link,
             "source": "국어국문학과",
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -2944,7 +2944,7 @@ def get_kwmedia_notices():   # 미디어커뮤니케이션학부
                 "image_url": img_urls[:3], 
                 "link": link,
                 "source": "미디어커뮤니케이션학부",
-                "status": "pending"
+                "status": "completed"
             }
             results.append(data)
 
@@ -3095,7 +3095,7 @@ def get_kwpsy_notices():   # 산업심리학과
             "image_url": img_urls,
             "link": link,
             "source": "산업심리학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -3242,7 +3242,7 @@ def get_kwdnaci_notices():   # 동북아문화산업학부
             "image_url": img_urls,
             "link": link,
             "source": "동북아문화산업학부", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -3389,7 +3389,7 @@ def get_kwpa_notices():   # 행정학과
             "image_url": img_urls,
             "link": link,
             "source": "행정학과", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -3536,7 +3536,7 @@ def get_kwlaw_notices():   # 법학부
             "image_url": img_urls,
             "link": link,
             "source": "법학부", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -3684,7 +3684,7 @@ def get_kwliberal_notices():   # 자율전공학부
             "image_url": img_urls,
             "link": link,
             "source": "자율전공학부", # 출처 변경
-            "status": "pending",
+            "status": "completed",
             "title": title
         }
         results.append(data)
@@ -3846,7 +3846,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
     print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
     
     # 'kw_notices'라는 이름의 컬렉션(폴더)에 저장
-    collection_ref = db.collection('test_notices') 
+    collection_ref = db.collection('raw_notices') 
     
     for data in data_list:
         raw_id = data['source']
@@ -3865,7 +3865,7 @@ def save_to_firebase(data_list):     #파이어베이스 저장 함수
 
 def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
     crawling_functions = [
-        get_kw_notices,        # 광운대 본교
+        get_kw_notices,        # 광운대
         get_kwai_notices,      # 인공지능융합대학
         get_kwei_notices,      # 전자정보공과대학
         get_kwbiz_notices,     # 경영대학
@@ -3909,9 +3909,12 @@ def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
 
     return True
 
+
+"""
 crawled_data = get_kwliberal_notices()     
 
 if crawled_data:
     save_to_firebase(crawled_data)
 else:
     print("수집된 데이터가 없습니다.")
+
