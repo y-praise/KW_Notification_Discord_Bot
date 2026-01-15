@@ -2241,6 +2241,9 @@ def get_kwuarchi_notices():   # 건축학과 공지사항 크롤링
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+    chrome_options.add_argument("--disable-logging")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_argument("--disable-gpu")
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     
@@ -2827,6 +2830,9 @@ def get_kwmedia_notices():   # 미디어커뮤니케이션학부
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+    chrome_options.add_argument("--disable-logging")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_argument("--disable-gpu")
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     
@@ -3822,35 +3828,45 @@ def get_kwenglish_notices():   # 영어산업학과
           
     return results
 
-def save_to_firebase(data_list):     # 파이어베이스 저장 함수
-    print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
+def save_to_firebase(data_list):
+    collection_ref = db.collection('raw_notices')
+    new_post_count = 0
     
-    collection_ref = db.collection('raw_notices') 
-    
+    # 텍스트 비교 전 공백/줄바꿈 제거 함수
+    def normalize(text):
+        if not text: return ""
+        return re.sub(r'\s+', '', text) # 모든 공백 및 줄바꿈 제거
+
     for data in data_list:
         raw_id = data['source']
         safe_id = raw_id.replace("/", "_").replace("\\", "_").replace(".", "_")
-        
-        # 링크 해시값으로 고유 ID 생성
         link_hash = hashlib.md5(data['link'].encode()).hexdigest()[:6]
         doc_id = f"{safe_id}__{link_hash}"
         
-        # 기존 문서가 있는지 확인
         doc_ref = collection_ref.document(doc_id)
         existing_doc = doc_ref.get()
         
         if existing_doc.exists:
             existing_data = existing_doc.to_dict()
             
-            # 내용(full_text)이 변경되었는지 확인(본문 내용이 다르다면 수정된 공지로 판단)
-            if existing_data.get('full_text') != data['full_text']:
+            # 공백을 제거한 순수 텍스트만 비교
+            db_text = normalize(existing_data.get('full_text', ''))
+            new_text = normalize(data.get('full_text', ''))
+            
+            if db_text != new_text:
+                # 정말로 내용이 바뀌었을 때만 업데이트 및 상태 변경
                 data['status'] = 'pending' 
                 doc_ref.set(data)
+                new_post_count += 1
+            else:
+                # 내용이 동일하면 무시 (기존 status: completed 유지)
+                pass
         else:
-            # 신규 공지사항인 경우 그대로 저장 (기본 status는 pending)
+            # 신규 공지사항인 경우 저장
             doc_ref.set(data)
+            new_post_count += 1
         
-    print("모든 데이터 저장 루틴 완료!")
+    return new_post_count
 
 def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
     crawling_functions = [
@@ -3873,6 +3889,7 @@ def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
         get_kwchem_notices,    # 화학과
         get_kwsports_notices,  # 스포츠융합과학과
         get_kwkorean_notices,  # 국어국문학과
+        get_kwmedia_notices,    # 미디어커뮤티케이션학부
         get_kwpsy_notices,     # 산업심리학과
         get_kwdnaci_notices,   # 동북아문화산업학부
         get_kwpa_notices,      # 행정학과
@@ -3883,17 +3900,14 @@ def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
 
     for func in crawling_functions:
         try:
-            print(f"[{func.__name__}] 실행 중...")
             data = func()
             
             if data and len(data) > 0:
-                save_to_firebase(data) 
-                print(f"[{func.__name__}] 실행 완료")
-            else:
-                print(f"[{func.__name__}] 수집된 데이터가 없습니다.")
+                new_post_count = save_to_firebase(data)
+                print(f"[크롤링] {func.__name__} 완료 - 신규 공지사항 {new_post_count}개 저장됨")
                 
         except Exception as e:
-            print(f"{func.__name__} 작업 중 에러 발생: {e}")
+            print(f"[크롤링] {func.__name__} 작업 중 에러 발생: {e}")
         
         time.sleep(2)
 

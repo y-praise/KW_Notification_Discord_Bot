@@ -167,7 +167,7 @@ def process_raw_to_refined():
                     'is_sent': False
                 })
                 doc.reference.update({'status': 'completed'})
-            success_count += 1
+                success_count += 1
         else:
             for d in batch_docs: d.reference.update({'status': 'error'})
 
