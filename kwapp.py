@@ -3688,6 +3688,146 @@ def get_kwliberal_notices():   # 자율전공학부
         
     return results
 
+def get_kwenglish_notices():   # 영어산업학과
+    BASE_URL = "https://english.kw.ac.kr"
+    NOTICE_LIST_URL = "https://english.kw.ac.kr/new/bulletin/notice.php" 
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    
+    try:
+        # verify=False 제거 (순정 상태)
+        res = requests.get(NOTICE_LIST_URL, headers=headers)
+        
+        # [핵심 수정] utf-8이 아니라 euc-kr로 설정해야 한글이 보입니다!
+        res.encoding = 'euc-kr' 
+        
+    except Exception as e:
+        print(f"[영어산업학과] 접속 실패: {e}")
+        return []
+
+    soup = BeautifulSoup(res.text, 'html.parser')
+    
+    # .board_table 클래스 사용
+    articles = soup.select("table.board_table tbody tr")
+    
+    if not articles:
+        articles = soup.select(".notice_list table tbody tr")
+
+    results = []
+    target_count = 5 
+    
+    for article in articles: 
+        if len(results) >= target_count:
+            break
+
+        # [필터링]
+        no_td = article.select_one(".d_no")
+        if not no_td: continue
+        no_text = no_td.get_text(strip=True)
+        
+        if not no_text.isdigit():
+            continue
+
+        # [제목 추출]
+        title_td = article.select_one(".d_sj")
+        if not title_td: 
+            tds = article.select("td")
+            if len(tds) > 1: title_td = tds[1]
+            
+        if not title_td: continue
+        a_tag = title_td.select_one("a")
+        if not a_tag: continue
+
+        for junk in a_tag.select("img, span"): junk.decompose()
+        raw_title = a_tag.get_text(separator=" ", strip=True)
+        if "New" in raw_title: raw_title = raw_title.replace("New", "")
+        title = " ".join(raw_title.split())
+
+        # [링크 생성]
+        relative_link = a_tag['href']
+        if "http" not in relative_link:
+            clean_link = relative_link.replace("./", "")
+            if clean_link.startswith("/"):
+                 link = f"https://english.kw.ac.kr{clean_link}"
+            else:
+                 link = f"https://english.kw.ac.kr/new/bulletin/{clean_link}"
+        else:
+            link = relative_link
+        
+        # ---------------------------------------------------------------
+        # [상세 페이지 접속]
+        # ---------------------------------------------------------------
+        try:
+            sub_res = requests.get(link, headers=headers)
+            
+            # [핵심 수정] 상세 페이지도 euc-kr로 읽어야 함
+            sub_res.encoding = 'euc-kr' 
+            
+            sub_soup = BeautifulSoup(sub_res.text, 'html.parser')
+        except:
+            continue
+
+        # [1단계] 본문 영역 찾기
+        content_box = sub_soup.select_one(".board_view")
+        if not content_box: content_box = sub_soup.select_one(".view_con")
+        if not content_box: content_box = sub_soup.select_one("#container")
+
+        img_urls = []
+        content = ""
+
+        if content_box:
+            # [2단계] 방해꾼 제거
+            trash_selectors = [
+                ".view_top", ".board_view_top", "thead", 
+                ".d_sj", ".d_dt", ".d_na", ".d_ck", 
+                ".view_file", ".file_area", ".attach", 
+                ".btn_area", ".btn_wrap", ".btn_list", 
+                ".prev_next", ".page_nav", 
+                "script", "style", "iframe"
+            ]
+            for selector in trash_selectors:
+                for trash in content_box.select(selector):
+                    trash.decompose()
+            
+            # [3단계] 텍스트 추출
+            content = content_box.get_text(separator="\n", strip=True)
+            if title in content:
+                content = content.replace(title, "").strip()
+            content = content.replace("\u200b", "").replace("\xa0", " ")
+            if len(content) > 3000:
+                content = content[:3000] + "..."
+
+            # [4단계] 이미지 추출
+            img_tags = content_box.select("img")
+            for img in img_tags:
+                src = img.get('src')
+                if not src: continue
+                if src.startswith("data:"): continue
+                
+                if not src.startswith("http"):
+                    if src.startswith("../"):
+                         src = src.replace("../", "")
+                         src = f"https://english.kw.ac.kr/{src}"
+                    elif src.startswith("/"):
+                         src = f"https://english.kw.ac.kr{src}"
+                    else:
+                         src = f"{BASE_URL}/new/bulletin/{src}"
+                img_urls.append(src)
+
+        crawled_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        data = {
+            "crawled_at": crawled_time,
+            "full_text": content,
+            "image_url": img_urls,
+            "link": link,
+            "source": "영어산업학과", 
+            "status": "pending",
+            "title": title
+        }
+        results.append(data)
+          
+    return results
 
 def save_to_firebase(data_list):     #파이어베이스 저장 함수
     print(f"데이터베이스 저장을 시작합니다... ({len(data_list)}개)")
@@ -3736,6 +3876,7 @@ def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
         get_kwpa_notices,      # 행정학과
         get_kwlaw_notices,     # 법학부
         get_kwliberal_notices  # 자율전공학부
+        get_kwenglish_notices() #영어산업학부
     ]
 
     for func in crawling_functions:
