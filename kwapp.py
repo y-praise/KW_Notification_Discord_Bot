@@ -3877,8 +3877,8 @@ def crawl_all_kw_sites():       #광운대 전체 크롤링 실행 함수
         get_kwdnaci_notices,   # 동북아문화산업학부
         get_kwpa_notices,      # 행정학과
         get_kwlaw_notices,     # 법학부
-        get_kwliberal_notices  # 자율전공학부
-        get_kwenglish_notices #영어산업학부
+        get_kwliberal_notices,  # 자율전공학부
+        get_kwenglish_notices   #영어산업학부
     ]
 
     for func in crawling_functions:
