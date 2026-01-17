@@ -99,12 +99,19 @@ def perform_gemini_analysis(batch_data):
     prompt = f"""
     지금부터 대학 공지사항을 분석할 겁니다.
     아래 {len(batch_data)}개의 공지사항을 분석하여 각 항목별로 JSON 배열을 반환하세요.
-    * 주의사항:
+    [주의사항]:
     1. 대상 학과나 단과대가 특정되지 않았다면 '전체'를 포함할 것.
     2. 반드시 제공된 목록에 있는 이름만 사용할 것.
-    3. '학과명 혹은 단과대명'과 '공지 타입'은 각각 여러개일 수 있음.
+    3. '공지 타입'은 반드시 1개여야 함.
     4. '학과명 혹은 단과대명'은 '공지 출처'를 참고하여 판단할 것.
-    5. 인스타그램에서 크롤링된 공지는 행사, 취업 외에는 '기타'로 분류할 것(공지 링크로 구분).
+    
+    [공지 타입 분류 가이드] - 반드시 아래 6개 중 하나 이상을 선택하세요.
+    - 학사/행정: 수강신청, 졸업, 성적, 휴/복학, 입학, 학위수여식 등 학교 운영 관련 의무 사항.
+    - 장학/복지: 교내외 장학금, 학자금 대출, 학생회 복지 혜택(제휴), 기숙사비 지원 등 금전적 혜택.
+    - 취업/대외: 채용 공고, 인턴십, 창업 지원, 외부 공모전, 자격증 취득 지원 등 커리어 관련.
+    - 글로벌: 교환학생, 해외 연수, 토익/어학 강좌, 외국인 유학생 전용 공지.
+    - 행사/시설: 축제, 강연회, 동아리 활동, 봉사활동, 학교 시설 이용 및 대관 안내.
+    - 기타: 위 5개 항목에 명확히 해당하지 않는 일반 안내 사항 (학생회 부원 모집, 숏폼 챌린지, 학교 홍보 등).
     
     [학과 목록]: {dept_str}
     [단과대 목록]: {college_str}
@@ -155,7 +162,6 @@ def process_raw_to_refined():
             for doc, analysis in zip(batch_docs, results):
                 raw_id = doc.id
                 raw_data = doc.to_dict()
-                
                 db.collection('refined_notices').document(raw_id).set({
                     'title': analysis.get('title'),
                     'category': analysis.get('category'),
@@ -173,6 +179,7 @@ def process_raw_to_refined():
 
         print(f"[분석] {success_count}/{len(batch_docs)}개의 공지사항 처리 완료.")
         time.sleep(10)
+
 """
 # 실행 부분 (테스트용)
 if __name__ == "__main__":
