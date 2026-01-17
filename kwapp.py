@@ -3887,7 +3887,7 @@ def get_kwenglish_notices():   # 영어산업학과
     return results
 
 def save_to_firebase(data_list):
-    collection_ref = db.collection('test_notices')
+    collection_ref = db.collection('raw_notices')
     new_post_count = 0
     
     # 텍스트 비교 전 공백/줄바꿈 제거 함수
