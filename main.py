@@ -32,7 +32,6 @@ def run_processor_loop():
     while True:
         try:
             process_raw_to_refined()
-            time.sleep(300)
         except Exception as e:
             print(f"[분석] 에러 발생: {e}")
             time.sleep(60)
