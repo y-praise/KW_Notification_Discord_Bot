@@ -35,3 +35,15 @@
    DISCORD_TOKEN=your_token
    FIREBASE_KEY_PATH=your_json_path
    DISCORD_CHANNEL_ID=your_channel_id
+   ```
+
+2. **의존성 라이브러리 설치**: 아래 명령어를 터미널에 복사하여 붙여넣으면 모든 필수 라이브러리가 한 번에 설치됩니다.
+   ```bash
+   pip install requests beautifulsoup4 selenium webdriver-manager instaloader google-genai python-dotenv firebase-admin discord.py
+   ```
+
+
+3. **시스템 실행**: 라이브러리 설치와 환경 변수 설정이 완료되면 메인 스크립트를 실행하여 파이프라인을 시작합니다.
+   ```bash
+   python main.py
+   ```
