@@ -47,3 +47,5 @@
    ```bash
    python main.py
    ```
+4. **디스코드 접속 및 구독 설정**: 시스템이 실행 중인 상태에서 아래 링크를 통해 알림 구독을 완료합니다.
+   https://discord.gg/TTDygDpg
